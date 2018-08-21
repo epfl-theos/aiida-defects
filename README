@@ -1,0 +1,3 @@
+#aiida_defects
+
+A package for DFT calculations of defects using AiiDA and QuantumESPRESSO
