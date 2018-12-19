@@ -72,7 +72,7 @@ def read_grid(folder_data):
     
         alat = celldm1
     
-        lines_to_remove = 3 
+        lines_to_remove = 3 + nat + ntyp + 1 
 
     if ibrav == 0:
         alat =   second_line[1]
@@ -145,13 +145,15 @@ def planar_average(Grid, structure, axis, npt=400):
     nr3 = info['nr3']
     
     if nr1x != nr1 or nr2x != nr2 or nr3x != nr3:
-        print "Thick and smooth mesh are different. Check result"
+        print("Thick and smooth mesh are different. Check result")
     
+      
     #Extracting cell parameters
     cell=structure.cell
     
     #Calculating the planar average
     if axis == 'x':
+	npt = nr1x
         average = np.zeros(shape=(nr1))
         for i in range(nr1):
             for j in range(nr2):
@@ -171,6 +173,7 @@ def planar_average(Grid, structure, axis, npt=400):
             ax = axnew
             average = average_smooth
     if axis == 'y':
+        npt = nr2x
         average = np.zeros(shape=(nr2))
         for j in range(nr2):
             for i in range(nr1):
@@ -191,6 +194,7 @@ def planar_average(Grid, structure, axis, npt=400):
             average = average_smooth
             
     if axis == 'z':
+        npt = nr3x 
         average = np.zeros(shape=(nr3))
         for k in range(nr3):
             for j in range(nr2):
@@ -210,7 +214,7 @@ def planar_average(Grid, structure, axis, npt=400):
             ax = axnew
             average = average_smooth
 
-    return {'average' : average,'ax': ax}
+    return {'average' : average,'ax': ax, 'npt' : int(npt)}
 
 def differentiator(x,y):
     """
@@ -300,27 +304,27 @@ def trilinear_interpolation(Grid, structure):
     return {'func_at_core' : func, 'symbols' : symbols}
 
 
-def avg_potential_at_core(func):
+def avg_potential_at_core(func_at_core,symbols):
     """
     Computes the average potential per type of atom in the structure
-    :param func: dictionary with potential at each core extracted from the 3D-FFT grid with trilinear_interpolation 
-                and the list of symbols in the structure
+    :param func_at_core: dictionary with potential at each core extracted from the interpolation of the FFT grid
+    :patam symbols: the list of symbols in the structure
     :result avg_atom_pot: average electrostatic potential for type of atom
     """
-    
-    potential = func['func_at_core']
-    symbols = func['symbols']
-    
+
+    #potential = func['func_at_core']
+    #symbols = func['symbols']
+
     species = list(set(symbols))
-    
     avg_pot_at_core = {}
     pot_at_core = []
     for specie in species:
-        for atom, pot in potential.iteritems():
+        for atom, pot in func_at_core.iteritems():
             if atom.split('_')[0] == specie:
-                pot_at_core.append(pot) 
-        avg_pot_at_core[str(specie)] = np.mean(pot_at_core)
-        pot_at_core = []
-    return avg_pot_at_core
+                pot_at_core.append(pot)
 
+        avg_pot_at_core[str(specie)] = np.mean(np.array(pot_at_core).astype(np.float))
+        pot_at_core = []
+
+    return avg_pot_at_core
 

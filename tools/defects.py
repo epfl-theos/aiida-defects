@@ -246,59 +246,140 @@ def explore_defect(host_structure, defective_structure, defect_type):
        by the same function for  host_structure.
     """
     defect_info = {}
+    
+    def fractional_coordinates(structure_mg):
+        cell_a= structure_mg.lattice.a
+        cell_b= structure_mg.lattice.b
+        cell_c= structure_mg.lattice.c
+        
+            
+        frac = []
+        cart = []
+        for  i in structure_mg.sites:
+            x = round(i.frac_coords[0],5)
+            y = round(i.frac_coords[1],5)
+            z = round(i.frac_coords[2],5)
+            
+
+            while x < 0:
+                x += 1.
+            while y < 0:
+                y += 1.
+            while z < 0:
+                z += 1.
+                
+            while x >= 1.:
+                x -= 1.
+            while y >= 1.:
+                y -= 1.
+            while z >= 1.:
+                z -= 1.
+            
+            frac.append(str(i.specie)+"-"+str(x)+'_'+str(y)+'_'+str(z))
+            cart.append(np.array([i.coords[0],i.coords[1],i.coords[2]])) 
+        return  {'frac' :  frac, 'cart' : cart}
+    
     def explore_vacancy(host_mg, defect_mg):
-        defect_site = list(set(host_mg.sites)-set(defect_mg.sites))
-        defect_info = {'atom_type' : str(defect_site[0].specie),
-                       'defect_name' : "V_"+str(defect_site[0].specie),
-                       'defect_position' : defect_site[0].coords,    
+        coord_host = fractional_coordinates(host_mg)
+        coord_defect = fractional_coordinates(defect_mg)
+        
+        host_frac = coord_host['frac']
+        def_frac = coord_defect['frac']
+        
+        defect_site = list(set(host_frac)-set(def_frac))
+                
+        n_cart = [n for n, site in enumerate(host_frac) if site in defect_site][0]
+        
+
+        
+        defect_info = {'atom_type' : str(defect_site[0].split('_')[0].split('-')[0]),
+                       'defect_name' : "V_"+str(defect_site[0].split('_')[0].split('-')[0]),
+                       'defect_position' : coord_host['cart'][n_cart]
+#                        'defect_position' : list([str(defect_site[0].split('_')[0].split('-')[1]),
+#                                                  defect_site[0].split('_')[1],
+#                                                  defect_site[0].split('_')[2]]),
         }
         return defect_info
-        
+
     def explore_substitution(host_mg, defect_mg):
-        defect_site = list(set(defect_mg.sites)-set(host_mg.sites))
-        defect_site_host = list(set(host_mg.sites)-set(defect_mg.sites))
-        defect_info = {'atom_type' : str(defect_site[0].specie),
-                       "defect_name" : str(defect_site_host[0].specie)+"_"+str(defect_site[0].specie),
-                       'defect_position' : defect_site[0].coords, 
+        coord_host = fractional_coordinates(host_mg)
+        coord_defect = fractional_coordinates(defect_mg)
+        
+        host_frac = coord_host['frac']
+        def_frac = coord_defect['frac']
+        
+        defect_site = list(set(def_frac)-set(host_frac)) 
+        defect_site_host = list(set(host_frac)-set(def_frac))
+        
+        n_cart = [n for n, site in enumerate(host_frac) if site in defect_site_host][0]
+        
+        defect_info = {'atom_type' : str(defect_site[0].split('_')[0].split('-')[0]),
+                       "defect_name" : str(defect_site_host[0].split('_')[0].split('-')[0])+"_"+str(defect_site[0].split('_')[0].split('-')[0]),
+                        'defect_position' : coord_host['cart'][n_cart]
+#                       list([str(defect_site[0].split('_')[0].split('-')[1]),
+#                                                  defect_site[0].split('_')[1],
+#                                                  defect_site[0].split('_')[2]]),
         }
         return defect_info
-        
+    
+
+
     def explore_cluster(host_mg, defect_mg):
         elements_mg=host_mg.types_of_specie
         elements = []
         for element in elements_mg:
             elements.append(str(element))
         
-        defect_sites = list(set(host_mg.sites)-set(defect_mg.sites))
-        defect_sites_host = list(set(defect_mg.sites)-set(host_mg.sites))
         
-        defect_coords = []
-        for site in defect_mg.sites:
-            defect_coords.append(site.coords)
+        coord_host = fractional_coordinates(host_mg)
+        coord_defect = fractional_coordinates(defect_mg)
+        
+        host_frac = coord_host['frac']
+        def_frac = coord_defect['frac']
+        
 
-        for n, site in enumerate(defect_sites):
-            #print n, site
-            if str(site.specie) in elements and not any((site.coords == x).all() for x in defect_coords):
-                #print site.specie
-                defect_info = {'atom_type'+"_v_"+str(n) : str(site.specie),
-                               'defect_name'+"_v_"+str(n) : "V"+"_"+str(site.specie),
-                               'defect_position'+"_v_"+str(n) : site.coords,
+     
+        defect_sites = list(set(host_frac)-set(def_frac))
+        defect_sites_host = list(set(def_frac)-set(host_frac))
+
+
+
+        for n, site in enumerate(defect_sites): 
+            check_vac = [site for j in def_frac if (str(site.split('-')[1])) in j]
+            
+            if str(site.split('_')[0].split('-')[0]) in elements and bool(check_vac) == False:
+                n_cart = [k for k, sit in enumerate(host_frac) if sit in site][0]
+                defect_info = {'atom_type'+"_v_"+str(n) : str(site.split('_')[0].split('-')[0]),
+                               'defect_name'+"_v_"+str(n) : "V"+"_"+str(site.split('_')[0].split('-')[0]),
+                                'defect_position'+"_v_"+str(n) :  coord_host['cart'][n_cart]
+#                                list([str(site.split('_')[0].split('-')[1]),
+#                                                                          site.split('_')[1],
+#                                                                          site.split('_')[2]])
                 }
-        
+
         for n, site in enumerate(defect_sites_host):
             for i in defect_sites:
-                if  np.array_equal(site.coords, i.coords):
-                    element = str(i.specie)
+                if  site.split('_')[1] == i.split('_')[1]:
+                    element = str(i.split('_')[0].split('-')[0])
+                    
+
+
             
-            defect_info['atom_type'+"_s_"+str(n)] = str(site.specie)
-            defect_info['defect_name'+"_s_"+str(n)] =  element+"_"+str(site.specie)
-            defect_info['defect_position'+"_s_"+str(n)] = site.coords
+                    
+            n_cart = [k for k, sit in enumerate(def_frac) if sit in site][0]
+
+
+            defect_info['atom_type'+"_s_"+str(n)] = str(site.split('_')[0].split('-')[0])
+            defect_info['defect_name'+"_s_"+str(n)] =  str(element)+"_"+str(site.split('_')[0].split('-')[0])
+            defect_info['defect_position'+"_s_"+str(n)] = list([str(site.split('_')[0].split('-')[1]),
+                                                                         site.split('_')[1],
+                                                                         site.split('_')[2]])
         return defect_info
-    
-    
+                                                       
+                                                       
     host_mg = host_structure.get_pymatgen()
     defect_mg = defective_structure.get_pymatgen()
-    
+
 
     if defect_type == "vacancy":
         defect_info = explore_vacancy(host_mg, defect_mg)
@@ -307,25 +388,20 @@ def explore_defect(host_structure, defective_structure, defect_type):
     elif defect_type == "cluster":
         defect_info = explore_cluster(host_mg, defect_mg)
     elif defect_type == "unknown":
+      
         n_atoms_host = 0
         for site in host_mg.sites:
             n_atoms_host += 1
         n_atoms_defect = 0
         for site in defect_mg.sites:
             n_atoms_defect += 1
-        
-        host_mg_positions=[]
-        for i in host_mg.sites:
-            host_mg_positions.append(tuple(i.coords.tolist()))
             
-        defect_mg_positions=[]
-        for i in defect_mg.sites:
-            defect_mg_positions.append(tuple(i.coords.tolist()))
+        
+        host_frac = fractional_coordinates(host_mg)['frac']
+        def_frac = fractional_coordinates(defect_mg)['frac']
+        n_defects = len(list(set(host_frac)-set(def_frac)))
 
-        
-        n_defects = len(list(set(host_mg_positions)-set(defect_mg_positions)))   
-        #n_defects = len(list(set(host_mg.sites)-set(defect_mg.sites)))
-            
+
         if n_defects == 1 and n_atoms_defect < n_atoms_host:
             defect_info = explore_vacancy(host_mg, defect_mg)
         elif n_defects == 1 and n_atoms_defect == n_atoms_host:
@@ -335,8 +411,9 @@ def explore_defect(host_structure, defective_structure, defect_type):
         else:
             sys.exit("Error: check your input structures.")
     else:
-        sys.exit("{} is not a valid value for the variable defect_type. Please insert one of the following: vacancy, substitution, cluster, unknown".format(defect_type))
-        
+        sys.exit("{} is not a valid value for the variable defect_type. Please insert one of the following: \
+                \n vacancy, substitution, cluster, unknown".format(defect_type))
+
     return defect_info
 
 
@@ -351,29 +428,24 @@ def distance_from_defect(defective_structure, defect_position):
     """
     from math import sqrt
     from mpmath import nint
-    
-    
+
+
     cell_x = defective_structure.cell[0][0]
     cell_y = defective_structure.cell[1][1]
     cell_z = defective_structure.cell[2][2]
-    
+
     defect_mg = defective_structure.get_pymatgen()
     distances = []
     #distances_from_defect = {}
     for site in defect_mg.sites:
-        dist_x = site.coords[0] - defect_position[0]
-        dist_x = dist_x - nint(dist_x / cell_x) * cell_x
-        dist_y = site.coords[1] - defect_position[1]
-        dist_y = dist_y - nint(dist_y / cell_y) * cell_y
-        dist_z = site.coords[2] - defect_position[2]
-        dist_z = dist_z - nint(dist_z / cell_z) * cell_z
-        
-        distance = sqrt(dist_x**2 +dist_y**2+dist_z**2)
+        distance = site.distance_from_point(defect_position)
         distances.append(distance)
-    
+
     distances_from_defect = zip(defect_mg.sites, distances)
-    
+
     return distances_from_defect
+
+
 
 def find_defect_index(defect_creator_output):
     """
@@ -514,7 +586,6 @@ def defect_creator_by_index(structure, find_defect_index_output):
     defects_mg = {}
     
     for defect in find_defect_index_output:
-        print defect
         if 'vacancy_' in defect:
             defects_mg[defect] = create_vacancy(structure_mg, find_defect_index_output[defect]['index'])
         elif 'substitution_' in defect:
@@ -524,7 +595,7 @@ def defect_creator_by_index(structure, find_defect_index_output):
         elif 'cluster_' in defect:
             for defect_name in find_defect_index_output[defect]:
                 if 'defect_name_v' in defect_name:
-                    print  find_defect_index_output[defect][defect_name]
+                    #print  find_defect_index_output[defect][defect_name]
                     defects_mg[defect] = create_vacancy(structure_mg,
                                                         find_defect_index_output[defect][defect_name]['index'])
             for defect_name in find_defect_index_output[defect]:
@@ -565,6 +636,8 @@ def distance_from_defect_aiida(defective_structure, defect_position):
     :param defect_position:  array containing the cartesian coordinates of the defect
     :returns  distances_from_defect: dictionary containing one entry for each Periodic Site (pamatgen periodic site)
                                      corresponding to the distance of the site from the defect
+
+    NOT TO USE if the cell is not orthogonal
     """
     from math import sqrt
     from mpmath import nint
@@ -589,5 +662,41 @@ def distance_from_defect_aiida(defective_structure, defect_position):
         distances.append(distance)
 
     distances_from_defect = zip(defective_structure.sites, distances)
+
+    return distances_from_defect
+
+
+def distance_from_defect_pymatgen(defective_structure, defect_position):
+    """
+    Computes the distance for each site from the defect
+    :param defective_structure: StructureData objecte containing the defective structure
+    :param defect_position:  array containing the cartesian coordinates of the defect
+    :returns  distances_from_defect: dictionary containing one entry for each Periodic Site (pamatgen periodic site)
+                                     corresponding to the distance of the site from the defect
+    NOT TO USE if the cell is not orthogonal
+    """
+    from math import sqrt
+    from mpmath import nint
+
+
+    cell_x = defective_structure.cell[0][0]
+    cell_y = defective_structure.cell[1][1]
+    cell_z = defective_structure.cell[2][2]
+
+    defect_mg = defective_structure.get_pymatgen()
+    distances = []
+    #distances_from_defect = {}
+    for site in defect_mg.sites:
+        dist_x = site.coords[0] - defect_position[0]
+        dist_x = dist_x - nint(dist_x / cell_x) * cell_x
+        dist_y = site.coords[1] - defect_position[1]
+        dist_y = dist_y - nint(dist_y / cell_y) * cell_y
+        dist_z = site.coords[2] - defect_position[2]
+        dist_z = dist_z - nint(dist_z / cell_z) * cell_z
+
+        distance = sqrt(dist_x**2 +dist_y**2+dist_z**2)
+        distances.append(distance)
+
+    distances_from_defect = zip(defect_mg.sites, distances)
 
     return distances_from_defect 

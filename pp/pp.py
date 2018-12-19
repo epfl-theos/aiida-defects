@@ -48,9 +48,6 @@ class PpWorkChain(WorkChain):
         spec.input("kpoints", valid_type=KpointsData, required = False)
         spec.input('parameters', valid_type=ParameterData, required = False)
         spec.input('parameters_pp', valid_type=ParameterData)
-        spec.input('magnetic_phase', valid_type=Str,required=False, default=Str('NM'))
-        spec.input('B_atom', valid_type=Str,required=False)
-        spec.input('hubbard_u', valid_type=ParameterData, required=False, default=ParameterData(dict={}))
         spec.input('pw_calc', valid_type=Bool, required=False, default=Bool(False))
         spec.input('remote_folder', valid_type=(FolderData,RemoteData), required = False)
         spec.input('parent_calculation', valid_type=PwCalculation, required=False)
@@ -73,54 +70,19 @@ class PpWorkChain(WorkChain):
         """
         Running the PW calculation using the PwBaseWorkChain
         """
-        #if any(c in self.inputs for c in ('host_parent_calculation', 'host_parent_folder')):
         
-        code_pw = Code.get_from_string(str(self.inputs.code_pw))
-        options = self.inputs.options
-        settings = self.inputs.settings
-        kpoints = self.inputs.kpoints
-        parameter = self.inputs.parameters
 
         inputs={
-                'code' : code_pw,
+                'code' : Code.get_from_string(str(self.inputs.code_pw)),
                 'pseudo_family' : Str(self.inputs.pseudo_family),
-                'kpoints' : kpoints,
-                'parameters' : parameter,
-                'settings' : settings,
-                'options' : options,
+                'kpoints' : self.inputs.kpoints,
+                'parameters' : self.inputs.parameters,
+                'settings' : self.inputs.settings,
+                'options' : self.inputs.options,
+                'structure' : self.inputs.structure
 
             }
 
-        suitable_inputs=create_suitable_inputs_noclass(self.inputs.structure,
-                                                       self.inputs.magnetic_phase,
-                                                       self.inputs.B_atom
-                                                          )
-        inputs['structure'] = suitable_inputs['structure']
-
-        param = inputs['parameters'].get_dict()
-        if 'calculation' not in  param['CONTROL']:
-            param['CONTROL']['calculation'] = 'scf'
-        magnetic_phases = ["FM", "A-AFM", "C-AFM", "G-AFM"]
-        if str(self.inputs.magnetic_phase)  in magnetic_phases:
-            param['SYSTEM']['starting_magnetization'] = suitable_inputs['starting_magnetization'].get_dict()
-            param['SYSTEM']['nspin'] = 2
-
-        U = {}
-        hubbard_U= self.inputs.hubbard_u.get_dict()
-        if bool(hubbard_U) and len(hubbard_U) == 1:
-            param['SYSTEM']['lda_plus_u'] =True
-            param['SYSTEM']['lda_plus_u_kind'] = 0
-            for site in  inputs['structure'].sites:
-                if site.kind_name[:2] == str(self.inputs.B_atom) or site.kind_name[:1] == 'Q' or  site.kind_name[:1] == 'J':
-                    U[str(site.kind_name)] =hubbard_U[list(hubbard_U)[0]]
-            param['SYSTEM']['hubbard_u'] = U
-        elif bool(hubbard_U) and len(hubbard_U) > 1:
-            param['SYSTEM']['lda_plus_u'] =True
-            param['SYSTEM']['lda_plus_u_kind'] = 0
-            U = hubbard_U
-            param['SYSTEM']['hubbard_u'] = U
-
-        inputs['parameters']= ParameterData(dict=param)
 
         running = submit(PwBaseWorkChain,**inputs)
         self.report('Launching PwBaseWorkChain. pk value {}'.format( running.pid))

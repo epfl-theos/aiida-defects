@@ -14,7 +14,7 @@ from aiida.orm.data.array import ArrayData
 from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm import DataFactory
-
+from aiida.orm.node import Node
 from aiida.orm.code import Code
 from aiida.orm import load_node
 
@@ -277,7 +277,7 @@ def bandfilling_ms_correction(host_bandstructure, defect_bandstructure, potentia
                 E_VBM_host_align -bands[k][e])
             E_acceptor += tmp
 
-    return {' E_donor' :  E_donor, 'E_acceptor' : E_acceptor}
+    return {'E_donor' :  E_donor, 'E_acceptor' : E_acceptor}
 
 
 class BandFillingCorrectionWorkChain(WorkChain):
@@ -303,8 +303,8 @@ class BandFillingCorrectionWorkChain(WorkChain):
         spec.input('potential_alignment', valid_type=Float, default=Float(0.))
         spec.input('skip_relax', valid_type=Bool, required=False, default=Bool(True))
         spec.input_group('relax')
-        spec.input_group('host_bandstructure', required=False)
-        spec.input_group('defect_bandstructure', required=False)
+        spec.input('host_bandstructure', valid_type=Node, required=False)
+        spec.input('defect_bandstructure', valid_type=Node, required=False)
         spec.outline(
             if_(cls.should_run_host)(
             cls.run_host),
@@ -373,11 +373,11 @@ class BandFillingCorrectionWorkChain(WorkChain):
         
     def compute_band_filling(self):
         if 'host_bandstructure' in self.inputs:
-            host_bandstructure = self.inputs.host_bandstructure
+            host_bandstructure = self.inputs.host_bandstructure.out
         else:
             host_bandstructure = self.ctx.host_bandsworkchain.out
         if 'defect_bandstructure' in self.inputs:
-            defect_bandstructure = self.inputs.defect_bandstructure
+            defect_bandstructure = self.inputs.defect_bandstructure.out
         else:
             defect_bandstructure = self.ctx.defect_bandsworkchain.out
         

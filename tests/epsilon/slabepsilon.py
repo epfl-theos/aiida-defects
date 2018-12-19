@@ -87,6 +87,6 @@ outputs=run(SlabEpsilonSawtoothWorkChain,
              options=ParameterData(dict=options), 
              B_atom=Str("Ti"),
              magnetic_phase=Str("NM"),
-             eamp=Float(0.001)
+             eamp=Float(0.001),
              epsilon_type=Str('high_frequency'),
            )

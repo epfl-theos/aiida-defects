@@ -162,6 +162,7 @@ class MakovPayneCorrection(WorkChain):
         E_MP = (1. + c_sh*(1. - 1./epsilon_r)) * charge**2 * self.ctx.ewald_energy/epsilon_r
 
         self.out('Makov_Payne_Correction', Float(E_MP))
+        self.report('Makov Payne Correction {}'.format(E_MP))
 	self.report('MakovPayneCorrection workchain completed succesfully')
     
 
