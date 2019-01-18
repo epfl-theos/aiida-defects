@@ -3,7 +3,7 @@ from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.orm.data.base import  Str, Bool, Float, Int
-from aiida.workflows.user.aiida_defects.formation_energy.makovpayne import MakovPayneCorrection 
+from aiida_defects.formation_energy.makovpayne import MakovPayneCorrection 
 
 
 structure_sd=load_node(71971)

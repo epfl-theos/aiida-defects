@@ -3,7 +3,7 @@ from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.orm.data.base import  Str, Bool, Float, Int
-from aiida.workflows.user.aiida_defects.epsilon.slabepsilon import *
+from aiida_defects.epsilon.slabepsilon import *
 
 inputfile='lton_slab.cif'
 

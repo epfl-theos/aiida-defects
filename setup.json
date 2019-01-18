@@ -1,0 +1,36 @@
+{
+    "name": "aiida-defects",
+    "version": "0.1.0",
+    "author": "Chiara Ricca, Conrad Johnston",
+    "author_email": "chiara?@?",
+    "url": "",
+    "license": "? License",
+    "description": "AiiDA plugin providing workflows for the automated calculation of accurate defect formation energies",
+    "classifiers": [
+        "License :: OSI Approved :: ?",
+        "Programming Language :: Python :: 2.7",
+        "Development Status :: 2 - Pre-Alpha"
+    ],
+    "entry_points": {
+        "aiida.workflows": [
+            "defects.formation_energy = aiida_defects.workflows.defect_workchain:DefectWorkChain"
+        ]
+    },
+    "setup_requires": ["reentry"],
+    "reentry_register": true,
+    "install_requires": [
+        "aiida_core >=0.12.0, <1.0.0",
+        "aiida-quantumespresso >= 2.1.0, <3.0.0",
+        "pymatgen"
+    ],
+    "extras_require": {
+        "dev_precommit": [
+            "pre-commit"
+        ], 
+        "docs": [
+            "Sphinx", 
+            "docutils", 
+            "sphinx_rtd_theme"
+        ]
+    }
+}

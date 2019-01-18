@@ -15,7 +15,7 @@ from aiida.orm.data.folder import FolderData
 from aiida.orm.data.remote import RemoteData
 from aiida.orm import DataFactory
 from aiida.orm.data.singlefile import SinglefileData
-from aiida.workflows.user.aiida_defects.epsilon.bulkepsilonsawtooth import * 
+from aiida_defects.epsilon.bulkepsilonsawtooth import * 
 from aiida.orm.data.base import  Str, Bool, Float, Int
 
 

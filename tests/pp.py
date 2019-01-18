@@ -4,7 +4,7 @@ from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.orm.data.base import  Str, Bool, Float, Int
-from aiida.workflows.user.aiida_defects.pp.pp import PpWorkChain
+from aiida_defects.pp.pp import PpWorkChain
 
 from aiida.orm import load_node
 inputfile='lton.cif'

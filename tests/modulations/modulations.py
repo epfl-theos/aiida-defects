@@ -3,7 +3,7 @@ from aiida.orm.data.parameter import ParameterData
 from aiida.orm.data.structure import StructureData
 from aiida.orm.data.array.kpoints import KpointsData
 from aiida.orm.data.base import  Str, Bool, Float, Int
-from aiida.workflows.user.aiida_defects.phonopy.modulations import PhonopyWorkChain 
+from aiida_defects.phonopy.modulations import PhonopyWorkChain 
 
 inputfile='hktio2.cif'
 codename="pw_6.0@ubelix"  
