@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
+#                                                                         #
+# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
+# For further information on the license, see the LICENSE.txt file        #
+###########################################################################
 from aiida.orm import load_node
 from aiida.work.run import run
 from aiida.orm.data.parameter import ParameterData

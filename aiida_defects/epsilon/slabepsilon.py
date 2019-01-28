@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
+#                                                                         #
+# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
+# For further information on the license, see the LICENSE.txt file        #
+###########################################################################
 from aiida_defects.pp.pp import PpWorkChain
 from aiida_defects.pp.fft_tools import planar_average, read_grid, differentiator
 

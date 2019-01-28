@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
+#                                                                         #
+# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
+# For further information on the license, see the LICENSE.txt file        #
+###########################################################################
 from aiida.work.run import run, submit
 from aiida.work.workfunction import workfunction
 from aiida.work.workchain import WorkChain, ToContext, while_, Outputs, if_, append_

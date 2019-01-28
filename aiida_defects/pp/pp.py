@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
+#                                                                         #
+# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
+# For further information on the license, see the LICENSE.txt file        #
+###########################################################################
 import pymatgen
 import numpy as np
 from aiida.orm.data.upf import UpfData

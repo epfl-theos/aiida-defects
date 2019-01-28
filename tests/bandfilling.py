@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
+#                                                                         #
+# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
+# For further information on the license, see the LICENSE.txt file        #
+###########################################################################
 #from aiida_quantumespresso.workflows.pw.bands_10 import PwBandsWorkChain
 from aiida_defects.formation_energy.bandfilling import BandFillingCorrectionWorkChain 
 from aiida_defects.formation_energy  import bandfilling
