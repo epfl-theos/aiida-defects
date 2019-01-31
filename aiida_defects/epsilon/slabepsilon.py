@@ -5,6 +5,7 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from aiida.work.workchain import WorkChain
 from aiida_defects.pp.pp import PpWorkChain
 from aiida_defects.pp.fft_tools import planar_average, read_grid, differentiator
 
@@ -12,6 +13,8 @@ class SlabEpsilonSawtoothWorkChain(WorkChain):
     """
     WorkChain to calculate the dielectric constant of a slab structure within the Finite Electric Field approach 
     and a sawtooth potential. Both low and high frequency dielectric constant value can be obtained
+    """
+    """
     TODO:
     -update dielectric constant profile
     -dielectric profile function should be workfunction. this would require to change the output 

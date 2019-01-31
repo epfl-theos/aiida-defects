@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 ###########################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
@@ -32,6 +31,8 @@ strain._set_list([-7., -6., -5, -4, -3.,-2, -1., 0., 1., 2., 3., 4., 5., 6., 7.]
 class BiaxialStrainWorkChain(WorkChain):
     """
     Workchain to apply biaxial strain to a cubic structure
+
+
     """
     @classmethod
     def define(cls, spec):
@@ -152,5 +153,3 @@ class BiaxialStrainWorkChain(WorkChain):
         self.out('strain',self.inputs.strain)
         self.report('BiaxialStrainWorkChain succesfully completed.')
         return
-    
-

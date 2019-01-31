@@ -6,3 +6,5 @@
 .DS_Store
 .coverage
 .pytest_cache
+.vscode/
+docs/build
