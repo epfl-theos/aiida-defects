@@ -2,7 +2,7 @@ Welcome to AiiDA-Defects
 ++++++++++++++++++++++++
 
 AiiDA-Defects is a plugin for the `AiiDA <http://www.aiida.net/>`_ computational 
-materials science framework, and provides tools and automated workfows for the 
+materials science framework, and provides tools and automated workflows for the 
 study of defects in materials.
 
 The package is available for download from `GitHub <http://github.com/aiida-defects>`_.
@@ -58,6 +58,6 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-Acknowlegements
+Acknowledgments
 ===============
 This work is funded by...
