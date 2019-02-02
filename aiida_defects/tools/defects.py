@@ -29,21 +29,37 @@ from aiida.orm import load_node
 
 @workfunction
 def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
-    #TO DO: better labels, especially for substitutions and clusters.
     """
-    Workfunction that creates defects into a host structure on the baser of symmetry considerations
-    :param host_structure: StructureData object corresponding to the host structure
-    :param vacancies: list containg the specie of the host_structure for which we want to create vacancies.
-                      If clusters of the same vacancy type are to be formed the element should be repeted 
-                      in the vacancies list
-    :param substitutions: dictionary like {"Mn" : ["Ti", "Co"]} meaning that Mn in the host_structure
-                          will be substituted with either Ti or Co                     
-    :param scale_sc: scale parameter for the supercell creation. List of the type [a,b,c], which will result
-                     in a (axbxc) supercell.
-    :param cluster: boolean; if true defective structures containing all the requested defects are created. 
-                    Otherwise defective structures, each containing only one of the requested defects, will be created.
-    :result defective_structures: dictionary containing a list of all the defective structures created, as 
-                                StructureData objects. The first structure is always the host structure.
+    Workfunction that creates defects in a host structure on the basis of symmetry considerations.
+
+    Starting from a given host structure, which can be a unit cell or a supercell, defects are 
+    automatically created. Vacancy or substitutional defects can be created, as well as clusters.
+
+    .. Todo:: Better labels, especially for substitutions and clusters.
+
+    Parameters
+    ----------
+    host_structure : StructureData
+        Corresponding to the host structure.
+    vacancies : list
+        List containing the specie of the host_structure for which we want to create vacancies.
+        If clusters of the same vacancy type are to be formed the element should be repeated in
+        the vacancies list.
+    substitutions : dict 
+        Dictionary like {"Mn" : ["Ti", "Co"]} meaning that Mn in the host_structure will be 
+        substituted with either Ti or Co.                     
+    scale_sc : list
+        Scale parameter for the supercell creation. List of the form [a,b,c], which will result
+        in a (a*b*c) supercell.
+    cluster : boolean
+        If true defective structures containing all the requested defects are created. 
+        Otherwise defective structures, each containing only one of the requested defects, will be created.
+    
+    Returns
+    -------    
+    defective_structures : dict
+            Dictionary containing a list of all the defective structures created, as StructureData objects. 
+            The first structure is always the host structure.
     """
     #Checking that you specified at leat one type of defects
     if not list(vacancies) and not substitutions.get_dict():
@@ -87,8 +103,20 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
     from pymatgen.analysis.defects.point_defects import Defect, Vacancy, ValenceIonicRadiusEvaluator
     
     def structure_analyzer(host_mg):
+        """
+        Perform symmetry analysis of defect sites
 
-        #Symmetry analysis of defect sites
+        Parameters
+        ----------
+        host_mg : 
+            ?
+        
+        Returns
+        -------
+        vacancy : 
+            ?
+
+        """
         valence_evaluator = ValenceIonicRadiusEvaluator(host_mg)
         radii = valence_evaluator.radii
         valences = valence_evaluator.valences
@@ -236,18 +264,35 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
 
 def explore_defect(host_structure, defective_structure, defect_type):
     """
-    Function that find the position, atom_type in a defective structure
-    :param host_structure: host structure (StructureData)
-    :param defective_structure: defective structure (StructureData)
-    :param defect_type: type of defect as given by the defect_creator workfunction (vacancy, substitution, cluster, unknown)
-    :returns defect_info: dictionary containing  the following items
-                            1) numpy position vectors of the defect (in cartesian coordinates)
-                            2) atom type
-                            3) name to classify the defect
-    Assumption:
-    1) supercell shape, volume and atom coordinates are the same in host_structure and defective_structure.
-       If the defective structure was generated using the defect_creator workfunction, use the host structure returned
-       by the same function for  host_structure.
+    Finds the position and atom_type of a defect in a defective structure.
+
+    Compares two supercells - one host supercell and one defective supercell, infering the
+    positions and types of any defects present.
+
+    Assumptions:
+
+    1) Supercell shape, volume and atom coordinates are the same in host_structure and 
+       defective_structure.
+       If the defective structure was generated using the :meth:`defect_creator` workfunction, 
+       use the host structure returned by the same function for host_structure.
+
+    Parameters
+    ----------
+    host_structure : StructureData
+        The host structure.
+    defective_structure : StructureData
+        The defective structure.
+    defect_type: 
+        Type of defect as given by the :meth:`defect_creator` workfunction (vacancy, substitution, cluster, unknown)
+    
+    Returns
+    -------
+    defect_info : dict
+        A dictionary containing the following items:
+            1) Numpy position vector of the defect (in cartesian coordinates)
+            2) Atom type
+            3) Name to classify the defect
+    
     """
     defect_info = {}
     
@@ -284,6 +329,22 @@ def explore_defect(host_structure, defective_structure, defect_type):
         return  {'frac' :  frac, 'cart' : cart}
     
     def explore_vacancy(host_mg, defect_mg):
+        """
+        ?
+
+        Parameters
+        ----------
+        host_mg : 
+            ?
+        defect_mg :
+            ?
+        
+        Returns
+        -------
+        defect_info : 
+            ?
+
+        """
         coord_host = fractional_coordinates(host_mg)
         coord_defect = fractional_coordinates(defect_mg)
         
@@ -293,9 +354,7 @@ def explore_defect(host_structure, defective_structure, defect_type):
         defect_site = list(set(host_frac)-set(def_frac))
                 
         n_cart = [n for n, site in enumerate(host_frac) if site in defect_site][0]
-        
-
-        
+              
         defect_info = {'atom_type' : str(defect_site[0].split('_')[0].split('-')[0]),
                        'defect_name' : "V_"+str(defect_site[0].split('_')[0].split('-')[0]),
                        'defect_position' : coord_host['cart'][n_cart]
@@ -306,6 +365,22 @@ def explore_defect(host_structure, defective_structure, defect_type):
         return defect_info
 
     def explore_substitution(host_mg, defect_mg):
+        """
+        ?
+
+        Parameters
+        ----------
+        host_mg : 
+            ?
+        defect_mg :
+            ?
+        
+        Returns
+        -------
+        defect_info : 
+            ?
+
+        """
         coord_host = fractional_coordinates(host_mg)
         coord_defect = fractional_coordinates(defect_mg)
         
@@ -329,6 +404,22 @@ def explore_defect(host_structure, defective_structure, defect_type):
 
 
     def explore_cluster(host_mg, defect_mg):
+        """
+        ?
+
+        Parameters
+        ----------
+        host_mg : 
+            ?
+        defect_mg :
+            ?
+        
+        Returns
+        -------
+        defect_info : 
+            ?
+
+        """
         elements_mg=host_mg.types_of_specie
         elements = []
         for element in elements_mg:
@@ -424,11 +515,20 @@ def explore_defect(host_structure, defective_structure, defect_type):
 
 def distance_from_defect(defective_structure, defect_position):
     """
-    Computes the distance for each site from the defect
-    :param defective_structure: StructureData objecte containing the defective structure
-    :param defect_position:  array containing the cartesian coordinates of the defect
-    :returns  distances_from_defect: dictionary containing one entry for each Periodic Site (pamatgen periodic site)
-                                     corresponding to the distance of the site from the defect
+    Computes the distance of each atom site from the defect site.
+
+    Parameters
+    ----------
+    defective_structure : StructureData 
+        The defective structure.
+    defect_position : numpy.ndarray 
+        Cartesian coordinates of the defect.
+
+    Returns
+    -------
+    distances_from_defect : dict
+        One entry per periodic site (as defined by pymatgen)
+        corresponding to the distance of that site from the defect.
     """
     from math import sqrt
     from mpmath import nint
@@ -450,18 +550,29 @@ def distance_from_defect(defective_structure, defect_position):
     return distances_from_defect
 
 
-
 def find_defect_index(defect_creator_output):
     """
-    This function identifies the index of the atom in the host structure that is removed/substituted
-    in order to create the defect. It uses the explore_defect function
-    :param defect_creator_output: dictiotnary with the host and defective structures created using 
-    the defect_creator workfunction
-    :returns dictionary containing for every vacancy/substitution one entry which is a dictionary containing the index
-    the defect_name, the defect_position and the atom_type. For clusters, for every cluster created it contains 
-    one dictionary witht he same info as above for every defect created to obtain that cluster 
-    (e.g. cluster_1['defect_name_v_0] and cluster_1['defect_name_s_0] for a cluster made by a vacancy
-    and a substitution)
+    Identifies the index of the atom in the host structure that is removed/substituted
+    in order to create the defect. 
+    
+    Parameters
+    ----------
+    defect_creator_output : dict
+        Host and defective structures created using the :meth:`defect_creator` workfunction
+
+    Returns
+    -------
+    Nested dictionary 
+        containing one entry for every vacancy/substitution, which is a dictionary 
+        containing:
+           * the index
+           * the defect_name
+           * the defect_position 
+           * the atom_type
+        In the case of clusters, for every cluster created it contains one dictionary with the same 
+        info as above for every defect created to obtain that cluster
+        (e.g. cluster_1['defect_name_v_0] and cluster_1['defect_name_s_0] for a cluster made by a vacancy
+        and a substitution)
     """
     
     def find_vacancy_index(defect_creator_output):
@@ -543,32 +654,61 @@ def find_defect_index(defect_creator_output):
 @workfunction
 def defect_creator_by_index(structure, find_defect_index_output):
     """
-    Workfunction to create defects on the base of the index of the atoms in the structure
-    :param structure: StructureData Object for which we want to cretae defects
-    :param find_defect_index_output: parameterData object obtained applying the find_defect_index function
-    This function is meant to be used for example for defect calculation in strained cells, where the symmetry
-    can change compared to the 0% strain structure. You apply the defect_creator function on the 0% strain 
-    structure, you then apply the find_defect_index_output on the dictionary resulting from the previous function.
+    Workfunction to create defects on the basis of the index of the atoms in the structure.
+
+    This function is meant to be used, for example, for a defect calculation in strained cells,
+    where the symmetry can change compared to the unstrained structure. You apply the 
+    :meth:`defect_creator` function on the unstrained structure, and then apply  
+    :meth:`find_defect_index_output` on the resulting dictionary.
     Finally, you apply this function on the other strained cells.
-    If you want to use it independently from the from the defect_creator and find_defect_index functions,
-    to create the defects you want according to the indexes in your structure you should create a 
-    find_defect_index_output ParameterData object like:
+    If you want to use it independently from the :meth:`defect_creator` and 
+    :meth:`find_defect_index` functions, you should create a :meth:`find_defect_index_output` 
+    ParameterData object in the following way:
     
-    For VACANCY:
-    find_defect_index_output=ParameterData(dict={'vacancy_1': {'index': XX}
+        * For a vacancy:
+
+            .. code-block:: python
+
+                find_defect_index_output=ParameterData(
+                    dict={
+                        'vacancy_1': {'index': XX}
+                    }
+                )
     
-    })
+        * For a substitution:
     
-    For SUBSTITUTION:
-    find_defect_index_output=ParameterData(dict={'substitution_1': {'index': XX, 'atom_type' : YYY}
+            .. code-block:: python
+            
+                find_defect_index_output=ParameterData(
+                    dict={
+                        'substitution_1': {'index': XX, 'atom_type' : YYY}
+                    }
+                )  
     
-    })
-    
-    For CLUSTER:
-    find_defect_index_output=ParameterData(dict={'cluster_1': {'defect_name_v_0 ': {'index': XX},
-                                                        'defect_name_s_0 ': {'index': XX, 'atom_type_s_0' : YYY}
-    
-    })
+        * For a cluster:
+        
+            .. code-block:: python
+
+                find_defect_index_output=ParameterData(
+                    dict={
+                        'cluster_1': {
+                            'defect_name_v_0 ': {'index': XX},
+                            'defect_name_s_0 ': {'index': XX, 'atom_type_s_0' : YYY}
+                        }
+                    }
+                )
+
+    Parameters
+    ----------
+    structure : StructureData 
+        Host structure to create defects in.
+    find_defect_index_output : ParameterData 
+        Object returned by :meth:`find_defect_index` function.
+
+    Returns
+    -------
+    defective_structures : dict
+        Dictionarty containing StructureData objects with defects applied.
     
     """
     structure_mg = structure.get_pymatgen()
@@ -634,14 +774,27 @@ def defect_creator_by_index(structure, find_defect_index_output):
 
 def distance_from_defect_aiida(defective_structure, defect_position):
     """
-    Computes the distance for each site from the defect. Equivalent to distance_from_defect
-    but uses the coordinates in AGstrom from the StructureData without converting to pymatgen
-    :param defective_structure: StructureData objecte containing the defective structure
-    :param defect_position:  array containing the cartesian coordinates of the defect
-    :returns  distances_from_defect: dictionary containing one entry for each Periodic Site (pamatgen periodic site)
-                                     corresponding to the distance of the site from the defect
+    Computes the distance of each atom site from the defect site. 
 
-    NOT TO USE if the cell is not orthogonal
+    Equivalent to :meth:`distance_from_defect` but uses the coordinates in Ångstrom from the 
+    AiiDA StructureData object without converting to the pymatgen format.
+    
+    .. warning::
+        Only for use in orthogonal cells. For non-orthogonal cells use ...
+
+    Parameters
+    ----------
+    defective_structure : StructureData 
+        The defective structure.
+    defect_position : numpy.ndarray
+        The cartesian coordinates of the defect.
+
+    Returns
+    -------
+    distances_from_defect : dict
+        One entry per periodic site (pymatgen periodic site) corresponding to 
+        the distance of that site from the defect.
+
     """
     from math import sqrt
     from mpmath import nint
@@ -672,12 +825,23 @@ def distance_from_defect_aiida(defective_structure, defect_position):
 
 def distance_from_defect_pymatgen(defective_structure, defect_position):
     """
-    Computes the distance for each site from the defect
-    :param defective_structure: StructureData objecte containing the defective structure
-    :param defect_position:  array containing the cartesian coordinates of the defect
-    :returns  distances_from_defect: dictionary containing one entry for each Periodic Site (pamatgen periodic site)
-                                     corresponding to the distance of the site from the defect
-    NOT TO USE if the cell is not orthogonal
+    Computes the distance of each atom site from the defect site.
+
+    .. warning::
+        Only for use in orthogonal cells. For non-orthogonal cells use ...
+
+    Parameters
+    ----------
+    defective_structure : StructureData 
+        The defective structure.
+    defect_position : numpy.ndarray 
+        The cartesian coordinates of the defect
+
+    Returns
+    -------
+    distances_from_defect : dict
+        One entry per periodic site (pymatgen periodic site)
+        corresponding to the distance of the site from the defect
     """
     from math import sqrt
     from mpmath import nint

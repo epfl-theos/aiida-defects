@@ -44,9 +44,15 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.githubpages',
+    'sphinx.ext.todo',
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc'
 ]
+
+# Todo settings
+todo_include_todos = True
+# Napoleon settings
+napoleon_use_rtype = False
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/2.7', None),
