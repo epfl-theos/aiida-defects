@@ -4,7 +4,7 @@
     "author": "Chiara Ricca, Conrad Johnston",
     "author_email": "chiara?@?",
     "url": "",
-    "license": "? License",
+    "license": "MIT License",
     "description": "AiiDA plugin providing workflows for the automated calculation of accurate defect formation energies",
     "classifiers": [
         "License :: OSI Approved :: ?",
