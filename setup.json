@@ -25,12 +25,17 @@
     ],
     "extras_require": {
         "dev_precommit": [
-            "pre-commit"
+            "pre-commit",
         ], 
         "docs": [
             "Sphinx", 
             "docutils", 
             "sphinx_rtd_theme"
+        ],
+        "testing": [
+            "pytest",
+            "coverage",
+            "pytest-cov"
         ]
     }
 }

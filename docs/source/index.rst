@@ -27,6 +27,7 @@ Please also remember to cite the `AiiDA paper <https://doi.org/10.1016/j.commats
 
    installation/quick_setup
    installation/full_installation
+   installation/running_the_tests
 
 
 .. toctree::

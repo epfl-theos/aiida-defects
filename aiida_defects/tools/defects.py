@@ -35,7 +35,11 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
     Starting from a given host structure, which can be a unit cell or a supercell, defects are 
     automatically created. Vacancy or substitutional defects can be created, as well as clusters.
 
-    .. Todo:: Better labels, especially for substitutions and clusters.
+    .. Todo:: 
+        
+        - Better labels, especially for substitutions and clusters.
+        - Change input type test logic - currently it breaks if a list is reused.
+
 
     Parameters
     ----------
@@ -58,12 +62,12 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
     Returns
     -------    
     defective_structures : dict
-            Dictionary containing a list of all the defective structures created, as StructureData objects. 
-            The first structure is always the host structure.
+            Dictionary of all the defective structures created, as StructureData objects. 
+            The structure labeled `_0` is the host structure.
     """
     #Checking that you specified at leat one type of defects
-    if not list(vacancies) and not substitutions.get_dict():
-        sys.exit("You did not specified a defect type. Please check your inputs")
+    #if not list(vacancies) and not substitutions.get_dict():
+    #    sys.exit("You did not specified a defect type. Please check your inputs")
 
     #Converting an AiiDA StructureData in pymatgen Structure
     host_mg=host_structure.get_pymatgen()
@@ -839,9 +843,12 @@ def distance_from_defect_pymatgen(defective_structure, defect_position):
 
     Returns
     -------
-    distances_from_defect : dict
+    distances_from_defect : list of tuples
         One entry per periodic site (pymatgen periodic site)
         corresponding to the distance of the site from the defect
+        The first item in the tuple is the pymatgen 'PeriodicSite'
+        object, describing the site, and the second is a float 
+        describing the distance of this site from the defect.
     """
     from math import sqrt
     from mpmath import nint
