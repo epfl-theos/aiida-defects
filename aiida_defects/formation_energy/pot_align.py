@@ -5,6 +5,8 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
 import pymatgen
 import numpy as np
@@ -29,6 +31,7 @@ from aiida_defects.pp.pp import PpWorkChain
 from aiida_quantumespresso.calculations.pw import PwCalculation
 
 from aiida_defects.pp.fft_tools import *
+import six
 
 
 def lz_potential_alignment(bulk_structure,
@@ -66,7 +69,7 @@ def lz_potential_alignment(bulk_structure,
     #per atom
 
     diff_def = {}
-    for atom, pot in defect_sphere_pot.iteritems():
+    for atom, pot in six.iteritems(defect_sphere_pot):
         diff_def[atom] = float(pot) - avg_defect[atom.split('_')[0]]
 
     max_diff = abs(max(diff_def.values()))
@@ -84,7 +87,7 @@ def lz_potential_alignment(bulk_structure,
     #diff_def is lower than max_diff or of a user energy tolerance (e_tol)
     #Substituional atoms that do not appear in the host structure are removed from the average
     acceptable_atoms = []
-    for atom, value in diff_def.iteritems():
+    for atom, value in six.iteritems(diff_def):
         if atom.split('_')[0] in bulk_symbols:
             if abs(value) < max_diff or abs(value)*13.6058 < e_tol:
                 acceptable_atoms.append(atom)
@@ -92,8 +95,8 @@ def lz_potential_alignment(bulk_structure,
     #Avoid excluding all atoms
     while (not bool(acceptable_atoms)):
         e_tol = e_tol * 10
-        print("e_tol has been modified to {} in order to avoid excluding all atoms".format(e_tol))
-        for atom, value in diff_def.iteritems():
+        print(("e_tol has been modified to {} in order to avoid excluding all atoms".format(e_tol)))
+        for atom, value in six.iteritems(diff_def):
             #if count[atom.split('_')[0]] > 1:
             if atom.split('_')[0]  in bulk_symbols:
                 if abs(value) < max_diff or abs(value)*13.6058 < e_tol:
@@ -101,7 +104,7 @@ def lz_potential_alignment(bulk_structure,
 
     #Computing potential alignment avareging over all the acceptable atoms            
     diff_def2 = []
-    for atom, pot in defect_sphere_pot.iteritems():
+    for atom, pot in six.iteritems(defect_sphere_pot):
         if atom in acceptable_atoms:
             diff_def2.append( float(pot) - avg_bulk[atom.split('_')[0]])
 

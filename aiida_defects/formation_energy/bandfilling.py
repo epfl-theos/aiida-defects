@@ -5,6 +5,7 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from __future__ import absolute_import
 import sys
 import argparse
 import pymatgen
@@ -29,6 +30,9 @@ from aiida.orm.data.base import Float, Str, NumericType, BaseType, Int, Bool, Li
 
 
 from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
+import six
+from six.moves import range
+from six.moves import zip
 
 
 ######TODO: Apply create suitable input before submitting the PW calc
@@ -121,7 +125,7 @@ def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
 
             # sort the bands by energy, and reorder the occupations accordingly
             # since after joining the two spins, I might have unsorted stuff
-            bands, occupations = [numpy.array(y) for y in zip(*[zip(*j) for j in
+            bands, occupations = [numpy.array(y) for y in zip(*[list(zip(*j)) for j in
                                                                 [sorted(zip(i[0].tolist(), i[1].tolist()),
                                                                         key=lambda x: x[0])
                                                                  for i in zip(bands, occupations)]])]
@@ -400,7 +404,7 @@ class BandFillingCorrectionWorkChain(WorkChain):
         
         self.report('The computed band filling correction is <{}> and <{}> eV for a donor and an acceptor, respectively'.format(self.ctx.band_filling['E_donor'], self.ctx.band_filling['E_acceptor']))
         
-        for label, value in self.ctx.band_filling.iteritems():
+        for label, value in six.iteritems(self.ctx.band_filling):
             self.out(str(label),Float(value))
         
 #         for link_label in ['primitive_structure', 'seekpath_parameters', 'scf_parameters', 'band_parameters', 'band_structure']:

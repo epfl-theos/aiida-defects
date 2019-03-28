@@ -21,11 +21,12 @@
     "install_requires": [
         "aiida_core >=0.12.0, <1.0.0",
         "aiida-quantumespresso >= 2.1.0, <3.0.0",
-        "pymatgen"
+        "pymatgen",
+        "six"
     ],
     "extras_require": {
         "dev_precommit": [
-            "pre-commit",
+            "pre-commit"
         ], 
         "docs": [
             "Sphinx", 

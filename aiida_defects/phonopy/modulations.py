@@ -5,6 +5,8 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
 import os
 import argparse
@@ -38,6 +40,8 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiida_defects.tools.structure_manipulation import get_spacegroup
 from aiida_defects.tools.structure_manipulation import create_suitable_inputs_noclass
 from aiida_defects.phonopy.phonopy_tools import *
+import six
+from six.moves import zip
 
 
 class PhonopyWorkChain(WorkChain):
@@ -295,7 +299,7 @@ class PhonopyWorkChain(WorkChain):
         self.ctx.modulated_structures = modulations_inspection(**self.ctx.inline_params)
         
         if 'angle_scan' in self.ctx.modulated_structures:
-            self.ctx.ops = self.ctx.modulated_structures['angle_scan'].get_dict().values()
+            self.ctx.ops = list(self.ctx.modulated_structures['angle_scan'].get_dict().values())
             self.out('ops_symmetries', self.ctx.modulated_structures['angle_scan'])
             del self.ctx.modulated_structures['angle_scan']
         
@@ -303,7 +307,7 @@ class PhonopyWorkChain(WorkChain):
             self.report('No instabilities found. Workchain stopped')
             sys.exit('No instabilities found. Workchain stopped')
 
-        elif Bool(False) in self.ctx.modulated_structures.values():
+        elif Bool(False) in list(self.ctx.modulated_structures.values()):
             self.report('Mode with degeneracy higher than two. Not able to treat it')
             self.ctx.modulated_structures = {key:val for key, val in 
                                              self.ctx.modulated_structures.items() if val != Bool(False)}
@@ -379,7 +383,7 @@ class PhonopyWorkChain(WorkChain):
         #self.ctx.opt_nondegenerate[str(mode)]
         
         calcs = {}        
-        for label, structure in self.ctx.non_degenerate.iteritems():
+        for label, structure in six.iteritems(self.ctx.non_degenerate):
             if not bool(self.ctx.repeat_nondeg) or self.ctx.repeat_nondeg[str(label.split('_')[1])+str(label.split('_')[3])] == False:  
                 suitable_inputs=create_suitable_inputs_noclass(structure,
                                                        self.inputs.magnetic_phase,
@@ -435,7 +439,7 @@ class PhonopyWorkChain(WorkChain):
 
         for mode in self.ctx.nondeg_modes:
             self.ctx.E_nondeg['nondeg_mode'+str(mode)] = {}
-            for label, value in self.ctx.non_degenerate.iteritems():
+            for label, value in six.iteritems(self.ctx.non_degenerate):
                 if "nondeg_"+str(mode) in label:
                     self.ctx.E_nondeg['nondeg_mode'+str(mode)][str(label)] = Float(self.ctx[str(label)]["output_parameters"].dict.energy)
                         #opt_structure = self.ctx[str(value)]["output_structure"]
@@ -460,7 +464,7 @@ class PhonopyWorkChain(WorkChain):
         energies = []
         #if bool(self.ctx.non_degenerate):
         for mode in self.ctx.nondeg_modes:
-            for label, energy in self.ctx.E_nondeg['nondeg_mode'+str(mode)].iteritems():
+            for label, energy in six.iteritems(self.ctx.E_nondeg['nondeg_mode'+str(mode)]):
                 amplitude.append(label.split('_')[3])
                 energies.append(energy)
                 
@@ -572,7 +576,7 @@ class PhonopyWorkChain(WorkChain):
             energies = []
             DeltaE = np.array([])
                 
-        self.ctx.repeat_nondeg = dict(zip(self.ctx.nondeg_modes,self.ctx.fitting_nondeg_ok))
+        self.ctx.repeat_nondeg = dict(list(zip(self.ctx.nondeg_modes,self.ctx.fitting_nondeg_ok)))
 
     
     def optimization_nondegenerate(self):
@@ -607,12 +611,12 @@ class PhonopyWorkChain(WorkChain):
             
         self.ctx.opt_nondegenerate_flat = {}
         for mode in self.ctx.opt_nondegenerate:
-            for label, structure in self.ctx.opt_nondegenerate[mode].iteritems():
+            for label, structure in six.iteritems(self.ctx.opt_nondegenerate[mode]):
                 self.ctx.opt_nondegenerate_flat[label] = structure
                     
                 
         calcs = {}    
-        for label, structure in self.ctx.opt_nondegenerate_flat.iteritems():
+        for label, structure in six.iteritems(self.ctx.opt_nondegenerate_flat):
             suitable_inputs=create_suitable_inputs_noclass(structure,
                                                        self.inputs.magnetic_phase,
                                                        self.inputs.B_atom)
@@ -663,7 +667,7 @@ class PhonopyWorkChain(WorkChain):
         #if bool(self.ctx.non_degenerate):
         self.out('energy_nondeg',ParameterData(dict=self.ctx.E_nondeg))
         for label in self.ctx.opt_nondegenerate_flat:
-            print label, self.ctx[str(label)]
+            print(label, self.ctx[str(label)])
             #self.out('opt_'+str(label),self.ctx[str(label)])
 #             self.ctx.res_nondeg[str(label)] = {}
 #             self.ctx.res_nondeg[str(label)]['energy'] = Float(self.ctx[str(label)]["output_parameters"].dict.energy)
@@ -710,7 +714,7 @@ class PhonopyWorkChain(WorkChain):
 
             }
         calcs = {}
-        for label, structure in self.ctx.degenerate.iteritems():
+        for label, structure in six.iteritems(self.ctx.degenerate):
             if not bool(self.ctx.repeat_deg) or self.ctx.repeat_deg[str(label.split('_')[1])+str(label.split('_')[3])] == False:
                 suitable_inputs=create_suitable_inputs_noclass(structure,
                                                        self.inputs.magnetic_phase,
@@ -761,7 +765,7 @@ class PhonopyWorkChain(WorkChain):
         for mode in self.ctx.deg_modes:
             for opd in self.ctx.ops:
                 self.ctx.E_deg['DEG_mode'+str(mode)+'_ang_'+str(opd)] = {}
-                for label, value in self.ctx.degenerate.iteritems():
+                for label, value in six.iteritems(self.ctx.degenerate):
                     if "DEG_"+str(mode)+'_ang_'+str(opd) in label:
                         self.ctx.E_deg['DEG_mode'+str(mode)+'_ang_'+str(opd)][str(label)] = self.ctx[str(label)]["output_parameters"].dict.energy
         
@@ -784,7 +788,7 @@ class PhonopyWorkChain(WorkChain):
         #if bool(self.ctx.degenerate):
         for mode in self.ctx.deg_modes:
             for opd in self.ctx.ops:
-                for label, energy in self.ctx.E_deg['DEG_mode'+str(mode)+'_ang_'+str(opd)].iteritems():
+                for label, energy in six.iteritems(self.ctx.E_deg['DEG_mode'+str(mode)+'_ang_'+str(opd)]):
                     amplitude.append(label.split('_')[5])
                     energies.append(energy)
                     
@@ -915,7 +919,7 @@ class PhonopyWorkChain(WorkChain):
         for mode in self.ctx.deg_modes:
             for opd in self.ctx.ops:
                 self.ctx.deg_modes_ops.append(str(mode)+"_"+str(opd))
-        self.ctx.repeat_deg = dict(zip(self.ctx.deg_modes_ops,self.ctx.fitting_deg_ok))
+        self.ctx.repeat_deg = dict(list(zip(self.ctx.deg_modes_ops,self.ctx.fitting_deg_ok)))
                 
 
         
@@ -952,12 +956,12 @@ class PhonopyWorkChain(WorkChain):
             
         self.ctx.opt_degenerate_flat = {}
         for mode in self.ctx.opt_degenerate:
-            for label, structure in self.ctx.opt_degenerate[mode].iteritems():
+            for label, structure in six.iteritems(self.ctx.opt_degenerate[mode]):
                 self.ctx.opt_degenerate_flat[label] = structure
         
         calcs = {}
 
-        for label, structure in self.ctx.opt_degenerate_flat.iteritems():
+        for label, structure in six.iteritems(self.ctx.opt_degenerate_flat):
             suitable_inputs=create_suitable_inputs_noclass(structure,
                                                        self.inputs.magnetic_phase,
                                                        self.inputs.B_atom)
@@ -1025,7 +1029,7 @@ class PhonopyWorkChain(WorkChain):
             #self.out('modulation_'+str(label),self.ctx.res_nondeg[str(label)])
  
 
-            for link_name, node in self.ctx.res_deg[label[:-2].replace('.',';')].iteritems():
+            for link_name, node in six.iteritems(self.ctx.res_deg[label[:-2].replace('.',';')]):
                 self.out(link_name, node) 
         
         #return

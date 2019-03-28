@@ -5,6 +5,7 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from __future__ import absolute_import
 import sys
 import pymatgen
 import numpy as np

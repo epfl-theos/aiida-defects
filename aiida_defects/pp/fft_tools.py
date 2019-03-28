@@ -5,6 +5,8 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
 import argparse
 import pymatgen
@@ -29,6 +31,8 @@ from aiida.work.workfunction import workfunction
 from aiida.work.workchain import WorkChain, ToContext, while_, Outputs, if_, append_
 from aiida.orm.data.base import Float, Str, NumericType, BaseType, Int, Bool, List
 from aiida_quantumespresso.calculations.pw import PwCalculation
+import six
+from six.moves import range
 
 ###################################################
 #This module contains:                            #
@@ -302,7 +306,7 @@ def trilinear_interpolation(Grid, structure):
         atoms[symbols[i]+'_'+str(site.position)] = np.array([x,y,z])
     
     func = {}
-    for atom, position in atoms.iteritems():
+    for atom, position in six.iteritems(atoms):
         func[atom] = float(fn(position)[0])
     
 
@@ -324,7 +328,7 @@ def avg_potential_at_core(func_at_core,symbols):
     avg_pot_at_core = {}
     pot_at_core = []
     for specie in species:
-        for atom, pot in func_at_core.iteritems():
+        for atom, pot in six.iteritems(func_at_core):
             if atom.split('_')[0] == specie:
                 pot_at_core.append(pot)
 

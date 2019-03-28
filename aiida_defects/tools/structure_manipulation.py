@@ -5,6 +5,8 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from __future__ import absolute_import
+from __future__ import print_function
 import sys
 import pymatgen
 import numpy as np
@@ -19,6 +21,8 @@ from aiida.orm import load_node
 from aiida_defects.tools.defects import explore_defect
 from aiida_defects.tools.defects import distance_from_defect_aiida
 from aiida_defects.tools.defects import distance_from_defect
+import six
+from six.moves import range
 #########################################################################################################
 #This module contains:                                                             	       		#
 # 1) sites_vs_distance_from_defect(structure, defect_position, specie, thr=0.01)               		#
@@ -136,7 +140,7 @@ def sites_vs_distance_from_defect_lc(structure, defect_position, specie, thr=0.0
                 distances.append(round(v, digits))
             elif  round(v,digits) >= round(thr2,digits) and round(thr2,digits) not in distances:
                 distances.append(round(thr2,digits))
-    print distances
+    print(distances)
     equivalent_atoms={}
     equivalent_atoms_tmp=[]
     
@@ -196,7 +200,7 @@ def sites_vs_symmetry(structure, specie, symprec=0.01):
             symmetrized_structure=space_group_analyzer.get_symmetrized_structure()
             equ_atoms=symmetrized_structure.find_equivalent_sites(sites_specie[i])
             
-            for count, (key, value) in enumerate(equivalent_atoms.iteritems(), 1):
+            for count, (key, value) in enumerate(six.iteritems(equivalent_atoms), 1):
                 n_groups = count
         
             equivalent_atoms[str(sites_specie[i].specie)+str(n_groups+1)]= equ_atoms
@@ -271,7 +275,7 @@ def impose_magnetic_phase(sites_Batom, magnetic_phase):
     
     x_positions=[]
 
-    for label, sites in sites_Batom.iteritems():
+    for label, sites in six.iteritems(sites_Batom):
         for site in  sites:
             if "%.1f" % site.coords[0] not in x_positions:
                 x_positions.append( "%.1f" % site.coords[0])
@@ -279,14 +283,14 @@ def impose_magnetic_phase(sites_Batom, magnetic_phase):
     
     y_positions=[]
 
-    for label, sites in sites_Batom.iteritems():
+    for label, sites in six.iteritems(sites_Batom):
         for site in  sites:
             if "%.1f" % site.coords[1] not in y_positions:
                 y_positions.append( "%.1f" % site.coords[1])
     
     z_positions=[]
 
-    for label, sites in sites_Batom.iteritems():
+    for label, sites in six.iteritems(sites_Batom):
         for site in  sites:
             if "%.1f" % site.coords[2] not in z_positions:
                 z_positions.append( "%.1f" % site.coords[2])
@@ -318,7 +322,7 @@ def impose_magnetic_phase(sites_Batom, magnetic_phase):
             starting_magnetization[str(label)]=+1.00
     
     elif magnetic_phase =='A-AFM':
-        for label, sites in sites_Batom.iteritems():
+        for label, sites in six.iteritems(sites_Batom):
             for site in  sites:
                 for z in range(len(z_positions)):
                     if z %2 == 0  and "%.1f" % site.coords[2]== z_positions[z]:
@@ -335,10 +339,10 @@ def impose_magnetic_phase(sites_Batom, magnetic_phase):
             magnetic_sites_tmp_u = []
             magnetic_sites_tmp_d = []
             
-        magnetic_sites = dict(itertools.chain(magnetic_sites_u.iteritems(), magnetic_sites_d.iteritems()))
+        magnetic_sites = dict(itertools.chain(six.iteritems(magnetic_sites_u), six.iteritems(magnetic_sites_d)))
     
     elif magnetic_phase =='G-AFM':
-        for label, sites in sites_Batom.iteritems():
+        for label, sites in six.iteritems(sites_Batom):
             for site in  sites:
                 for x in range(len(x_positions)):
                     for y in range(len(y_positions)):
@@ -358,10 +362,10 @@ def impose_magnetic_phase(sites_Batom, magnetic_phase):
             magnetic_sites_tmp_u = []
             magnetic_sites_tmp_d = []
             
-        magnetic_sites = dict(itertools.chain(magnetic_sites_u.iteritems(), magnetic_sites_d.iteritems()))                   
+        magnetic_sites = dict(itertools.chain(six.iteritems(magnetic_sites_u), six.iteritems(magnetic_sites_d)))                   
     
     elif magnetic_phase=='C-AFM':
-        for label, sites in sites_Batom.iteritems():
+        for label, sites in six.iteritems(sites_Batom):
             for site in  sites:
                 for x in range(len(x_positions)):
                     for y in range(len(y_positions)):
@@ -380,7 +384,7 @@ def impose_magnetic_phase(sites_Batom, magnetic_phase):
             magnetic_sites_tmp_u = []
             magnetic_sites_tmp_d = []
             
-        magnetic_sites = dict(itertools.chain(magnetic_sites_u.iteritems(), magnetic_sites_d.iteritems()))
+        magnetic_sites = dict(itertools.chain(six.iteritems(magnetic_sites_u), six.iteritems(magnetic_sites_d)))
                                 
     
     magnetic_inputs={'magnetic_sites' : magnetic_sites,
@@ -426,7 +430,7 @@ def impose_magnetic_phase_new(sites_Batom, magnetic_phase):
 
     x_positions=[]
 
-    for label, sites in sites_Batom.iteritems():
+    for label, sites in six.iteritems(sites_Batom):
         for site in  sites:
             if "%.1f" % site.coords[0] not in x_positions:
                 x_positions.append( "%.1f" % site.coords[0])
@@ -434,14 +438,14 @@ def impose_magnetic_phase_new(sites_Batom, magnetic_phase):
 
     y_positions=[]
 
-    for label, sites in sites_Batom.iteritems():
+    for label, sites in six.iteritems(sites_Batom):
         for site in  sites:
             if "%.1f" % site.coords[1] not in y_positions:
                 y_positions.append( "%.1f" % site.coords[1])
 
     z_positions=[]
 
-    for label, sites in sites_Batom.iteritems():
+    for label, sites in six.iteritems(sites_Batom):
         for site in  sites:
             if "%.1f" % site.coords[2] not in z_positions:
                 z_positions.append( "%.1f" % site.coords[2])
@@ -512,7 +516,7 @@ def impose_magnetic_phase_new(sites_Batom, magnetic_phase):
             starting_magnetization[str(label)]=+1.00
 
     elif magnetic_phase =='A-AFM':
-        for label, sites in sites_Batom.iteritems():
+        for label, sites in six.iteritems(sites_Batom):
             for site in  sites:
                 for z in range(len(z_positions)):
                     if z %2 == 0  and abs(float(site.coords[2]) - float(z_positions[z])) < thr:
@@ -529,10 +533,10 @@ def impose_magnetic_phase_new(sites_Batom, magnetic_phase):
             magnetic_sites_tmp_u = []
             magnetic_sites_tmp_d = []
 
-        magnetic_sites = dict(itertools.chain(magnetic_sites_u.iteritems(), magnetic_sites_d.iteritems()))
+        magnetic_sites = dict(itertools.chain(six.iteritems(magnetic_sites_u), six.iteritems(magnetic_sites_d)))
 
     elif magnetic_phase =='G-AFM':
-        for label, sites in sites_Batom.iteritems():
+        for label, sites in six.iteritems(sites_Batom):
             for site in  sites:
                 for x in range(len(x_positions)):
                     for y in range(len(y_positions)):
@@ -567,10 +571,10 @@ def impose_magnetic_phase_new(sites_Batom, magnetic_phase):
             magnetic_sites_tmp_u = []
             magnetic_sites_tmp_d = []
 
-        magnetic_sites = dict(itertools.chain(magnetic_sites_u.iteritems(), magnetic_sites_d.iteritems()))
+        magnetic_sites = dict(itertools.chain(six.iteritems(magnetic_sites_u), six.iteritems(magnetic_sites_d)))
 
     elif magnetic_phase=='C-AFM':
-        for label, sites in sites_Batom.iteritems():
+        for label, sites in six.iteritems(sites_Batom):
             for site in  sites:
                 for x in range(len(x_positions)):
                     for y in range(len(y_positions)):
@@ -604,7 +608,7 @@ def impose_magnetic_phase_new(sites_Batom, magnetic_phase):
             magnetic_sites_tmp_u = []
             magnetic_sites_tmp_d = []
 
-        magnetic_sites = dict(itertools.chain(magnetic_sites_u.iteritems(), magnetic_sites_d.iteritems()))
+        magnetic_sites = dict(itertools.chain(six.iteritems(magnetic_sites_u), six.iteritems(magnetic_sites_d)))
 
 
     magnetic_inputs={'magnetic_sites' : magnetic_sites,
@@ -673,7 +677,7 @@ def create_suitable_inputs(structure, magnetic_phase, B_atom, criterion, defect_
     
     structure_mg = structure.get_pymatgen()
     
-    for label, sites in magnetic_sites.iteritems():
+    for label, sites in six.iteritems(magnetic_sites):
         for site in sites:
             final_structure.append_atom(position = site.coords, symbols=str(label[:2]), name = str(label))
 
@@ -835,7 +839,7 @@ def create_suitable_inputs_new(structure, magnetic_phase, B_atom, criterion, def
     
     structure_mg = structure.get_pymatgen()
     
-    for label, sites in magnetic_sites.iteritems():
+    for label, sites in six.iteritems(magnetic_sites):
         for site in sites:
             #print label[:2], label
             final_structure.append_atom(position = site.coords, symbols=str(B_atom), name = str(label))
@@ -895,7 +899,7 @@ def impose_magnetic_phase_noclass(structure, B_atom, magnetic_phase):
 
     x_positions=[]
 
-    for label, sites in sites_Batom.iteritems():
+    for label, sites in six.iteritems(sites_Batom):
         for site in  sites:
             if "%.1f" % site.coords[0] not in x_positions:
                 x_positions.append( "%.1f" % site.coords[0])
@@ -903,13 +907,13 @@ def impose_magnetic_phase_noclass(structure, B_atom, magnetic_phase):
 
     y_positions=[]
 
-    for label, sites in sites_Batom.iteritems():
+    for label, sites in six.iteritems(sites_Batom):
         for site in  sites:
             if "%.1f" % site.coords[1] not in y_positions:
                 y_positions.append( "%.1f" % site.coords[1])
 
     z_positions=[]
-    for label, sites in sites_Batom.iteritems():
+    for label, sites in six.iteritems(sites_Batom):
         for site in  sites:
             if "%.1f" % site.coords[2] not in z_positions:
                 z_positions.append( "%.1f" % site.coords[2])
@@ -982,7 +986,7 @@ def impose_magnetic_phase_noclass(structure, B_atom, magnetic_phase):
             starting_magnetization[str(label)]=+1.00
 
     elif magnetic_phase =='A-AFM':
-        for label, sites in sites_Batom.iteritems():
+        for label, sites in six.iteritems(sites_Batom):
             for site in  sites:
                 for z in range(len(z_positions)):
                     if z %2 == 0  and abs(float(site.coords[2]) - float(z_positions[z])) < thr:
@@ -998,10 +1002,10 @@ def impose_magnetic_phase_noclass(structure, B_atom, magnetic_phase):
 
             magnetic_sites_tmp_u = []
             magnetic_sites_tmp_d = []
-        magnetic_sites = dict(itertools.chain(magnetic_sites_u.iteritems(), magnetic_sites_d.iteritems()))
+        magnetic_sites = dict(itertools.chain(six.iteritems(magnetic_sites_u), six.iteritems(magnetic_sites_d)))
 
     elif magnetic_phase=='C-AFM':
-        for label, sites in sites_Batom.iteritems():
+        for label, sites in six.iteritems(sites_Batom):
             for site in  sites:
                 for x in range(len(x_positions)):
                     for y in range(len(y_positions)):
@@ -1038,10 +1042,10 @@ def impose_magnetic_phase_noclass(structure, B_atom, magnetic_phase):
             magnetic_sites_tmp_u = []
             magnetic_sites_tmp_d = []
 
-        magnetic_sites = dict(itertools.chain(magnetic_sites_u.iteritems(), magnetic_sites_d.iteritems()))
+        magnetic_sites = dict(itertools.chain(six.iteritems(magnetic_sites_u), six.iteritems(magnetic_sites_d)))
 
     elif magnetic_phase =='G-AFM':
-        for label, sites in sites_Batom.iteritems():
+        for label, sites in six.iteritems(sites_Batom):
             for site in  sites:
                 for x in range(len(x_positions)):
                     for y in range(len(y_positions)):
@@ -1077,7 +1081,7 @@ def impose_magnetic_phase_noclass(structure, B_atom, magnetic_phase):
             magnetic_sites_tmp_u = []
             magnetic_sites_tmp_d = []
 
-        magnetic_sites = dict(itertools.chain(magnetic_sites_u.iteritems(), magnetic_sites_d.iteritems()))
+        magnetic_sites = dict(itertools.chain(six.iteritems(magnetic_sites_u), six.iteritems(magnetic_sites_d)))
 
     magnetic_inputs={'magnetic_sites' : magnetic_sites,
                      'starting_magnetization' : starting_magnetization,
@@ -1116,7 +1120,7 @@ def create_suitable_inputs_noclass(structure, magnetic_phase, B_atom):
 
     structure_mg = structure.get_pymatgen()
 
-    for label, sites in magnetic_sites.iteritems():
+    for label, sites in six.iteritems(magnetic_sites):
         for site in sites:
             final_structure.append_atom(position = site.coords, symbols=str(B_atom), name = str(label))
 
@@ -1186,7 +1190,7 @@ def initialize_site_dependent_hubbard_u(B_atom, hubbard_u,host,current,reference
         return False
 
     ## A reference structure and an adequate hubbard_u dictionary have been provided as input
-    if reference != -100 and is_number(random.choice(hubbard_u.keys())) == False:
+    if reference != -100 and is_number(random.choice(list(hubbard_u.keys()))) == False:
         #Identifying the defect position in the reference structure
         pos_ref=explore_defect(host,reference,'unknown')
 
@@ -1197,24 +1201,24 @@ def initialize_site_dependent_hubbard_u(B_atom, hubbard_u,host,current,reference
         #Creating a dictionary where to every distance in the reference structure correspond a U value
         tmp_hubb={}
         for i in distances_ref:
-            for kind, u in hubbard_u.iteritems():
+            for kind, u in six.iteritems(hubbard_u):
                 if str(i[0].kind_name) == kind:
                     tmp_hubb[str(i[1])] = u
     ## A reference structure and an INadequate hubbard_u dictionary have been provided as input                                  
-    elif reference != -100 and is_number(random.choice(hubbard_u.keys())) == True:
+    elif reference != -100 and is_number(random.choice(list(hubbard_u.keys()))) == True:
         sys.exit('You provided a reference structure but the hubbard_u dictionary contains\
         distances and not kind names as keys. Please check your input')
 
     ## No reference structure and an INadequate hubbard_u dictionary have been provided as input                                     
-    elif reference == -100 and is_number(random.choice(hubbard_u.keys())) == False:
+    elif reference == -100 and is_number(random.choice(list(hubbard_u.keys()))) == False:
         sys.exit('You did not provid a reference structure but the hubbard_u dictionary contains\
          kind names and not distances as keys. Please check your input')
         
         ## NO reference structure but an adequate hubbard_u dictionary have been provided as input
-    elif reference == -100 and is_number(random.choice(hubbard_u.keys())) == True:
+    elif reference == -100 and is_number(random.choice(list(hubbard_u.keys()))) == True:
         tmp_hubb = hubbard_u
 
-    print "tmphubb", tmp_hubb
+    print("tmphubb", tmp_hubb)
 
     #Identifying the defect position in the current structure
     pos_current=explore_defect(host,current,'unknown')
@@ -1242,7 +1246,7 @@ def initialize_site_dependent_hubbard_u(B_atom, hubbard_u,host,current,reference
     #automatically increased 
     ethr = 0.01
     for i in distances_current:
-        for dist, u in tmp_hubb.iteritems():
+        for dist, u in six.iteritems(tmp_hubb):
             
             if abs(i[1] - float(dist)) < ethr and ('J'in str(i[0].kind_name) or
                                     'Q' in  str(i[0].kind_name) or
@@ -1262,7 +1266,7 @@ def initialize_site_dependent_hubbard_u(B_atom, hubbard_u,host,current,reference
         while (not stop and step < max_step):
             ethr *= 10
             for i in distances_current:
-                for dist, u in tmp_hubb.iteritems():
+                for dist, u in six.iteritems(tmp_hubb):
                     if str(i[0].kind_name) not in hubbard_U:
                         if abs(i[1] - float(dist)) < ethr and ('J'in str(i[0].kind_name) or
                                                             'Q' in  str(i[0].kind_name) or

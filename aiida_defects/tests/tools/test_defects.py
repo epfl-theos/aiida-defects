@@ -11,6 +11,8 @@ from __future__ import absolute_import
 import numpy as np
 import pkg_resources
 import pytest
+import six
+from six.moves import range
 
 
 class TestDefects(object):
@@ -74,7 +76,7 @@ class TestDefects(object):
             atol=1.e-9
         )
         # Iterate over remaining keys and check their values
-        for key, value in reference.iteritems():
+        for key, value in six.iteritems(reference):
             assert value == result.pop(key)
 
     def test_defect_creator_substitution(self, aiida_profile, test_structures):
@@ -133,7 +135,7 @@ class TestDefects(object):
             atol=1.e-9
         )
         # Iterate over remaining keys and check their values
-        for key, value in reference.iteritems():
+        for key, value in six.iteritems(reference):
             assert value == result.pop(key)
 
     @pytest.mark.skip(reason="Investigation needed - cluster creator doesn't return the expected clusters")
@@ -299,7 +301,7 @@ class TestDefects(object):
             atol=1.e-9
         )
         # Iterate over remaining keys and check their values
-        for key, value in reference.iteritems():
+        for key, value in six.iteritems(reference):
             assert value == result.pop(key)
 
 
@@ -405,7 +407,7 @@ class TestDefects(object):
             atol=1.e-9
         )
         # Iterate over remaining keys and check their values
-        for key, value in reference.iteritems():
+        for key, value in six.iteritems(reference):
             assert value == result.pop(key)
 
         # There should be no keys left
@@ -429,7 +431,7 @@ class TestDefects(object):
             atol=1.e-9
         )
         # Iterate over remaining keys and check their values
-        for key, value in reference.iteritems():
+        for key, value in six.iteritems(reference):
             assert value == result.pop(key)
 
         # There should be no keys left
@@ -463,7 +465,7 @@ class TestDefects(object):
         )
         
         # Iterate over remaining keys and check their values
-        for key, value in reference.iteritems():
+        for key, value in six.iteritems(reference):
             assert value == result.pop(key)
 
         # There should be no keys left
@@ -498,7 +500,7 @@ class TestDefects(object):
         )
         
         # Iterate over remaining keys and check their values
-        for key, value in reference.iteritems():
+        for key, value in six.iteritems(reference):
             assert value == result.pop(key)
 
         # There should be no keys left
@@ -532,13 +534,13 @@ class TestDefects(object):
             }
         }
 
-        for label, data in result.iteritems():
+        for label, data in six.iteritems(result):
             np.testing.assert_allclose(
                 result[label].pop('defect_position'), 
                 reference[label].pop('defect_position'),
                 atol=1.e-9
             )
-            for key,value in data.iteritems():
+            for key,value in six.iteritems(data):
                 assert reference[label][key] == value, "The output dictionary key does not contain the expected value"
        
 
@@ -564,14 +566,14 @@ class TestDefects(object):
             }
         }
 
-        for cluster_label, cluster_data in result.iteritems():
-            for defect_label, defect_data in cluster_data.iteritems():
+        for cluster_label, cluster_data in six.iteritems(result):
+            for defect_label, defect_data in six.iteritems(cluster_data):
                 np.testing.assert_allclose(
                     result[cluster_label][defect_label].pop('defect_position'), 
                     reference[cluster_label][defect_label].pop('defect_position'),
                     atol=1.e-9
                 )
-            for key,value in data.iteritems():
+            for key,value in six.iteritems(data):
                 assert reference[cluster_label][defect_label][key] == value, "The output dictionary key does not contain the expected value"
 
 

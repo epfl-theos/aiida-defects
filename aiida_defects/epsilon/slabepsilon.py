@@ -5,9 +5,12 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from __future__ import absolute_import
+from __future__ import print_function
 from aiida.work.workchain import WorkChain
 from aiida_defects.pp.pp import PpWorkChain
 from aiida_defects.pp.fft_tools import planar_average, read_grid, differentiator
+from six.moves import range
 
 class SlabEpsilonSawtoothWorkChain(WorkChain):
     """
@@ -282,7 +285,7 @@ def dielectric_profile_along_axis(structure_a,
 
     for i in range(len(coords)-1):
         plane_dists.append(abs(coords[i]-coords[i+1]))
-        print i, coords[i], coords[i+1], abs(coords[i]-coords[i+1])
+        print(i, coords[i], coords[i+1], abs(coords[i]-coords[i+1]))
         if abs(coords[i]-coords[i+1]) > 5.:
             vacuum_max = coords[i+1]
             vacuum_min = coords[i]

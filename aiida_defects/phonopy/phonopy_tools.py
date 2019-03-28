@@ -5,6 +5,7 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from __future__ import absolute_import
 import sys
 import os
 import argparse
@@ -23,6 +24,9 @@ from aiida.orm.data.singlefile import SinglefileData
 from aiida.work.workfunction import workfunction
 from aiida.orm.data.base import Float, Str, NumericType, BaseType, Int, Bool, List
 from aiida.orm import DataFactory
+import six
+from six.moves import range
+from six.moves import zip
 
 
 
@@ -489,12 +493,12 @@ def modulations_inspection(**kwargs):
     for i, e in enumerate(eignvals):
         dups[ E_thr % e].append(i)
     
-    for k, v in sorted(dups.iteritems()):
+    for k, v in sorted(six.iteritems(dups)):
         if len(v) >= 2 and float(k)  < 0:
             degenerates[str(k)]=v
     
     degens=[]        
-    for eigval, indexes in degenerates.iteritems():
+    for eigval, indexes in six.iteritems(degenerates):
         degens.append(indexes)
     deg_band_index = [item for sublist in degens for item in sublist]
     
@@ -593,7 +597,7 @@ def modulations_inspection(**kwargs):
         #Creating modulations with angle values going from 0 to 90 and amplitudes  values going from 0
         #to the rescaled amplitude value
         phonon_modes_d=[]
-        angles = range(0,91, 1)
+        angles = list(range(0,91, 1))
         a_min = 0
         a_max = rescaled_ampl
         a_incr = a_max/(ampl_max/ampl_incr)
@@ -776,7 +780,7 @@ def modulations_inspection(**kwargs):
                 SG_tmp = []
                 tmp = []
         modulated_structures['angle_scan'] = ParameterData(dict=opd)
-        ops = opd.values()
+        ops = list(opd.values())
     #Creating modulation of the linear combination of doubly degenerate eigenvalues along
     #the highest symmetry order parameter directions
         phonon_modes_d = []

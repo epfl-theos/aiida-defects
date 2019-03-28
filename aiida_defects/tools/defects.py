@@ -5,6 +5,7 @@
 # AiiDA-Defects is hosted on GitHub at https://github.com/...             #
 # For further information on the license, see the LICENSE.txt file        #
 ###########################################################################
+from __future__ import absolute_import
 import sys
 import pymatgen
 import numpy as np
@@ -16,6 +17,9 @@ from aiida.orm import DataFactory
 from aiida.work.workfunction import workfunction
 from aiida.orm.data.base import Float, Str, NumericType, BaseType, Int, Bool, List
 from aiida.orm import load_node
+import six
+from six.moves import range
+from six.moves import zip
 
 ####################################################################################
 #This module contains:								   #
@@ -167,7 +171,7 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
         sub_scs_final = []
 
         #substitutions=substitutions.get_dict()
-        for specie, substitute in substitutions.iteritems():
+        for specie, substitute in six.iteritems(substitutions):
             for element in substitute:
                 sub_scs = vacancy.make_supercells_with_defects(scaling_matrix, specie, limit_return_structures)
 
@@ -549,7 +553,7 @@ def distance_from_defect(defective_structure, defect_position):
         distance = site.distance_from_point(defect_position)
         distances.append(distance)
 
-    distances_from_defect = zip(defect_mg.sites, distances)
+    distances_from_defect = list(zip(defect_mg.sites, distances))
 
     return distances_from_defect
 
@@ -585,7 +589,7 @@ def find_defect_index(defect_creator_output):
             ref = defect_creator_output['vacancy_0']
         else:
             pass
-        for defect, structure in defect_creator_output.iteritems():
+        for defect, structure in six.iteritems(defect_creator_output):
             if 'vacancy' in defect and str(defect) != 'vacancy_0':
                 info = explore_defect(ref,structure,'vacancy')
                 vacancies[str(defect)] = {}
@@ -605,7 +609,7 @@ def find_defect_index(defect_creator_output):
             ref = defect_creator_output['substitution_0']
         else:
             pass
-        for defect, structure in defect_creator_output.iteritems():
+        for defect, structure in six.iteritems(defect_creator_output):
             if 'substitution' in defect and str(defect) != 'substitution_0':
                 info = explore_defect(ref,structure,'substitution')
                 substitutions[str(defect)] = {}
@@ -624,7 +628,7 @@ def find_defect_index(defect_creator_output):
             ref = defect_creator_output['cluster_0']
         else:
             pass
-        for defect, structure in defect_creator_output.iteritems():
+        for defect, structure in six.iteritems(defect_creator_output):
             if 'cluster' in defect and str(defect) != 'cluster_0':
                 info = explore_defect(ref,structure,'cluster')
                 clusters[str(defect)] = {}
@@ -756,7 +760,7 @@ def defect_creator_by_index(structure, find_defect_index_output):
                                                       sub_site.frac_coords)
     
     defective_structures = {}
-    for name, structs in defects_mg.iteritems():
+    for name, structs in six.iteritems(defects_mg):
         defective_structures[name] = StructureData(pymatgen=structs)
         
     
@@ -822,7 +826,7 @@ def distance_from_defect_aiida(defective_structure, defect_position):
         distance = sqrt(dist_x**2 +dist_y**2+dist_z**2)
         distances.append(distance)
 
-    distances_from_defect = zip(defective_structure.sites, distances)
+    distances_from_defect = list(zip(defective_structure.sites, distances))
 
     return distances_from_defect
 
@@ -872,6 +876,6 @@ def distance_from_defect_pymatgen(defective_structure, defect_position):
         distance = sqrt(dist_x**2 +dist_y**2+dist_z**2)
         distances.append(distance)
 
-    distances_from_defect = zip(defect_mg.sites, distances)
+    distances_from_defect = list(zip(defect_mg.sites, distances))
 
     return distances_from_defect 
