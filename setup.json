@@ -8,7 +8,7 @@
     "description": "AiiDA plugin providing workflows for the automated calculation of accurate defect formation energies",
     "classifiers": [
         "License :: OSI Approved :: ?",
-        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python",
         "Development Status :: 2 - Pre-Alpha"
     ],
     "entry_points": {
@@ -19,8 +19,8 @@
     "setup_requires": ["reentry"],
     "reentry_register": true,
     "install_requires": [
-        "aiida_core >=0.12.0, <1.0.0",
-        "aiida-quantumespresso >= 2.1.0, <3.0.0",
+        "aiida-core >= 1.0.0b1,<2.0.0",
+        "aiida-quantumespresso >= 3.0.0,<4.0.0",
         "pymatgen",
         "six"
     ],
