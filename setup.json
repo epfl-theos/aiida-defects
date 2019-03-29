@@ -26,7 +26,14 @@
     ],
     "extras_require": {
         "dev_precommit": [
-            "pre-commit"
+            "pre-commit",
+            "pylint==1.9.4; python_version<'3.0'",
+            "pylint==2.2.2; python_version>='3.0'",
+            "yapf==0.26.0",
+            "prospector==1.1.5",
+            "pep8-naming==0.4.1",
+            "modernize==0.7"
+        
         ], 
         "docs": [
             "Sphinx", 
