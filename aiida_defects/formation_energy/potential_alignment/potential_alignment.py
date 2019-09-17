@@ -9,7 +9,7 @@ from __future__ import absolute_import
 
 from aiida import orm
 from aiida.engine import WorkChain, calcfunction
-
+from lany_zunger import lz_potential_alignment  
 
 @calcfunction
 def testing():
@@ -40,20 +40,16 @@ class PotentialAlignmentWorkchain(WorkChain):
         #spec.expose_outputs(PwBaseWorkChain, exclude=('output_structure',))
         spec.output('alignment_required', valid_type=orm.Float, required=True)
         # Exit codes
-        spec.exit_code(
-            401,
-            'ERROR_SUB_PROCESS_FAILED_WRONG_SHAPE',
-            message=
-            'the two electrostatic potentials must be the same shape, unless interpolation is allowed'
+        spec.exit_code(401, 'ERROR_SUB_PROCESS_FAILED_WRONG_SHAPE',
+            message='the two electrostatic potentials must be the same shape, unless interpolation is allowed'
         )
-        spec.exit_code(
-            402,
-            'ERROR_SUB_PROCESS_FAILED_INTERPOLATION',
-            message='the interpolation could not be completed')
-        spec.exit_code(
-            403,
-            'ERROR_SUB_PROCESS_FAILED_BAD_SCHEME',
-            message='the alignment scheme requested is unknown')
+        spec.exit_code(402, 'ERROR_SUB_PROCESS_FAILED_INTERPOLATION',
+            message='the interpolation could not be completed'
+        )
+        spec.exit_code(403, 'ERROR_SUB_PROCESS_FAILED_BAD_SCHEME',
+            message='the alignment scheme requested is unknown'
+        )
+
 
     def setup(self):
         """
@@ -86,6 +82,7 @@ class PotentialAlignmentWorkchain(WorkChain):
 
         self.ctx.alignment = 0.0
 
+
     def do_interpolation(self):
         """ 
         If interpolation is required, apply it
@@ -97,6 +94,7 @@ class PotentialAlignmentWorkchain(WorkChain):
 
         return
 
+
     def calculate_alignment(self):
         """
         Calculate the alignment according to the requested scheme
@@ -104,9 +102,11 @@ class PotentialAlignmentWorkchain(WorkChain):
         # Call the correct alignment scheme
         if self.inputs.alignment_scheme == 'lany-zunger':
             # TODO: import and call the alignment function
-            self.ctx.alignment = testing()
+            # self.ctx.alignment = testing()
+            self.ctx.alignment = lz_potential_alignment
 
         return
+
 
     def results(self):
         """

@@ -7,8 +7,10 @@
 ########################################################################################
 from __future__ import absolute_import
 
-from aiida.engine import calcfunction
+import six
 
+from aiida.engine import calcfunction
+from aiida_defects.pp.fft_tools import avg_potential_at_core
 
 @calcfunction
 def lz_potential_alignment(bulk_structure,
@@ -21,7 +23,7 @@ def lz_potential_alignment(bulk_structure,
     """
     Function to compute the potential alignment correction using the average atomic electrostatic potentials
     of the bulk and defective structures. See: S. Lany and A. Zunger, PRB 78, 235104 (2008)
-    Note: Adapted from pylada defects (https://github.com/ConradJohnston/aiida-defectsada/pylada-defects)
+    Note: Adapted from pylada defects (https://github.com/pylada/pylada-defects)
     Requirements: trilinear_interpolation, avg_potential_at_core. In order to use trilinear_interpolation the 
     3D-FFT grid should be extracted from the FolderData node in which aiida.filplot is stored in the DB using 
     the read_grid function.
