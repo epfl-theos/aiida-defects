@@ -39,14 +39,18 @@ class BandFillingWorkChain(WorkChain):
         spec.input('options', valid_type=orm.Dict)
         spec.input("settings", valid_type=orm.Dict)
         spec.input('host_parameters', valid_type=orm.Dict, required=False)
-        spec.input(
-            'defect_parameters', valid_type=orm.Dict, required=False)
+        spec.input('defect_parameters', valid_type=orm.Dict, required=False)
         spec.input('pseudo_family', valid_type=orm.Str)
         spec.input('kpoints_mesh', valid_type=orm.KpointsData, required=False)
-        spec.input('kpoints_distance', valid_type=orm.Float, default=orm.Float(0.2))
-        spec.input('potential_alignment', valid_type=orm.Float, default=orm.Float(0.))
         spec.input(
-            'skip_relax', valid_type=orm.Bool, required=False, default=orm.Bool(True))
+            'kpoints_distance', valid_type=orm.Float, default=orm.Float(0.2))
+        spec.input(
+            'potential_alignment', valid_type=orm.Float, default=orm.Float(0.))
+        spec.input(
+            'skip_relax',
+            valid_type=orm.Bool,
+            required=False,
+            default=orm.Bool(True))
         spec.input_group('relax')
         spec.input('host_bandstructure', valid_type=orm.Node, required=False)
         spec.input('defect_bandstructure', valid_type=orm.Node, required=False)
@@ -110,7 +114,9 @@ class BandFillingWorkChain(WorkChain):
 
         running = submit(PwBandsWorkChain, **inputs)
         #print "PK", running.pk
-        self.report('Launching the PwBandsWorkChain for the defect with PK'.format(running.pid))
+        self.report(
+            'Launching the PwBandsWorkChain for the defect with PK'.format(
+                running.pid))
         return ToContext(defect_bandsworkchain=running)
 
     def compute_band_filling(self):

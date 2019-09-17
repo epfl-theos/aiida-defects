@@ -93,8 +93,8 @@ def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
                 # spin up and spin down array
 
                 # put all spins on one band per kpoint
-                occupations = np.concatenate(
-                    [_ for _ in stored_occupations], axis=1)
+                occupations = np.concatenate([_ for _ in stored_occupations],
+                                             axis=1)
             else:
                 occupations = stored_occupations
 
@@ -240,7 +240,7 @@ def bandfilling_ms_correction(host_bandstructure, defect_bandstructure,
     #Finding host CBM and VBM
     bandgap = find_bandgap(host_bandsdata, host_number_electrons)
     if bandgap[0] == False and bandgap[1] == None:
-        return Bool(False)  #Metal systems
+        return orm.Bool(False)  #Metal systems
         #sys.exit('Are you sure to compute band filling corrections?\n
         #          Your host material is a metal.')
     else:

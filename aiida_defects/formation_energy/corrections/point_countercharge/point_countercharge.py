@@ -12,7 +12,7 @@ import sys
 import numpy as np
 import pymatgen
 
-from aiida.engine import WorkChain, calcfunction, ToContext, while_
+from aiida.engine import WorkChain, calcfunction, ToContext, while_, submit
 from aiida import orm
 
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
@@ -66,7 +66,7 @@ class PointCounterChargeWorkchain(WorkChain):
 
         H_structure = orm.StructureData(pymatgen=h_structure)
 
-        code_pw = Code.get_from_string(str(self.inputs.code_pw))
+        code_pw = orm.Code.get_from_string(str(self.inputs.code_pw))
         options = self.inputs.options
         settings = self.inputs.settings
         kpoints = self.inputs.kpoints
@@ -81,7 +81,7 @@ class PointCounterChargeWorkchain(WorkChain):
         inputs = {
             'structure': H_structure,
             'code': code_pw,
-            'pseudo_family': Str(self.inputs.pseudo_family),
+            'pseudo_family': orm.Str(self.inputs.pseudo_family),
             'kpoints': kpoints,
             'parameters': parameter,
             'settings': settings,
