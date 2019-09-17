@@ -7,4 +7,5 @@
 .coverage
 .pytest_cache
 .vscode/
+.history/
 docs/build

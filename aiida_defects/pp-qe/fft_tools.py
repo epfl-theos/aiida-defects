@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-###########################################################################
-# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
-#                                                                         #
-# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
-# For further information on the license, see the LICENSE.txt file        #
-###########################################################################
+########################################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
+#                                                                                      #
+# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# For further information on the license, see the LICENSE.txt file                     #
+########################################################################################
 from __future__ import absolute_import
 from __future__ import print_function
 import sys
@@ -33,6 +33,7 @@ from aiida.orm.data.base import Float, Str, NumericType, BaseType, Int, Bool, Li
 from aiida_quantumespresso.calculations.pw import PwCalculation
 import six
 from six.moves import range
+
 
 ###################################################
 #This module contains:                            #
@@ -65,11 +66,9 @@ def read_grid(folder_data):
     nat = int(first_line[6])
     ntyp = int(first_line[7])
 
-
     second_line = grid.splitlines()[2:3][0].strip().split(' ')
     second_line = [i for i in second_line if i != '']
     ibrav = int(second_line[0])
-
 
     if ibrav != 0:
         celldm1 = second_line[1]
@@ -78,36 +77,41 @@ def read_grid(folder_data):
         celldm4 = second_line[4]
         celldm5 = second_line[5]
         celldm6 = second_line[6]
-    
+
         alat = celldm1
-    
-        lines_to_remove = 3 + nat + ntyp + 1 
+
+        lines_to_remove = 3 + nat + ntyp + 1
 
     if ibrav == 0:
-        alat =   second_line[1]
-    
+        alat = second_line[1]
+
         third_line = grid.splitlines()[3:4][0].strip().split(' ')
         third_line = [i for i in third_line if i != '']
         a = [float(third_line[0]), float(third_line[1]), float(third_line[2])]
-    
+
         fourth_line = grid.splitlines()[4:5][0].strip().split(' ')
         fourth_line = [i for i in fourth_line if i != '']
-        b = [float(fourth_line[0]), float(fourth_line[1]), float(fourth_line[2])]
-    
+        b = [
+            float(fourth_line[0]),
+            float(fourth_line[1]),
+            float(fourth_line[2])
+        ]
+
         fifth_line = grid.splitlines()[5:6][0].strip().split(' ')
         fifth_line = [i for i in fourth_line if i != '']
         c = [float(fifth_line[0]), float(fifth_line[1]), float(fifth_line[2])]
-    
-        lines_to_remove = 3 + nat + ntyp + 3 +1
 
-    info = {'nr1x': nr1x,
-            'nr2x': nr2x,
-            'nr3x': nr3x,
-            'nr1': nr1,
-            'nr2': nr2,
-            'nr3': nr3,
-           }   
-        
+        lines_to_remove = 3 + nat + ntyp + 3 + 1
+
+    info = {
+        'nr1x': nr1x,
+        'nr2x': nr2x,
+        'nr3x': nr3x,
+        'nr1': nr1,
+        'nr2': nr2,
+        'nr3': nr3,
+    }
+
     #print lines_to_remove
 
     my_grid = []
@@ -117,17 +121,13 @@ def read_grid(folder_data):
                 my_grid.append(float(element))
     #print my_list
 
-    function = np.array(my_grid).reshape(nr1x,nr2x,nr3x)
-    
+    function = np.array(my_grid).reshape(nr1x, nr2x, nr3x)
+
     fft_grid = ArrayData()
     fft_grid.set_array('fft_grid_reshaped', function)
     fft_grid.set_array('fft_grid', np.array(my_grid))
 
-    return {'fft_grid' : fft_grid, 'info' : ParameterData(dict=info)}
-
-
-
-
+    return {'fft_grid': fft_grid, 'info': ParameterData(dict=info)}
 
 
 def planar_average(Grid, structure, axis, npt=400):
@@ -145,40 +145,39 @@ def planar_average(Grid, structure, axis, npt=400):
     #Extracting the 3D-FFT grid and the dictionary with information on the shape of the grid
     grid = Grid['fft_grid'].get_array('fft_grid')
     info = Grid['info'].get_dict()
-    
+
     nr1x = info['nr1x']
     nr2x = info['nr2x']
     nr3x = info['nr3x']
     nr1 = info['nr1']
     nr2 = info['nr2']
     nr3 = info['nr3']
-    
+
     if nr1x != nr1 or nr2x != nr2 or nr3x != nr3:
         print("Thick and smooth mesh are different. Check result")
-    
-      
+
     #Extracting cell parameters
-    cell=structure.cell
-    
+    cell = structure.cell
+
     #Calculating the planar average
     if axis == 'x':
-	npt = nr1x
+        npt = nr1x
         average = np.zeros(shape=(nr1))
         for i in range(nr1):
             for j in range(nr2):
                 for k in range(nr3):
-                    ir = i +(j-1)*nr1x +(k-1)*nr1x*nr2x
+                    ir = i + (j - 1) * nr1x + (k - 1) * nr1x * nr2x
                     average[i] += grid[ir]
-            average[i] = average[i] *13.6058 /(nr2*nr3)
-        x =[]
-        a=sqrt(cell[0][0]**2 + cell[0][1]**2 +cell[0][2]**2)
-        deltax = a/nr1
+            average[i] = average[i] * 13.6058 / (nr2 * nr3)
+        x = []
+        a = sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2)
+        deltax = a / nr1
         for i in range(nr1):
-            x.append(i*deltax)
+            x.append(i * deltax)
         ax = x
         if npt > nr1:
-            axnew = np.linspace(min(ax),max(ax),npt) 
-            average_smooth= spline(ax,average,axnew)
+            axnew = np.linspace(min(ax), max(ax), npt)
+            average_smooth = spline(ax, average, axnew)
             ax = axnew
             average = average_smooth
     if axis == 'y':
@@ -187,53 +186,54 @@ def planar_average(Grid, structure, axis, npt=400):
         for j in range(nr2):
             for i in range(nr1):
                 for k in range(nr3):
-                    ir = i +(j-1)*nr1x +(k-1)*nr1x*nr2x
+                    ir = i + (j - 1) * nr1x + (k - 1) * nr1x * nr2x
                     average[j] += grid[ir]
-            average[j] = average[j] *13.6058/(nr1*nr3)
-        y =[]
-        b=sqrt(cell[1][0]**2 + cell[1][1]**2 +cell[1][2]**2)
-        deltay = b/nr2
+            average[j] = average[j] * 13.6058 / (nr1 * nr3)
+        y = []
+        b = sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2)
+        deltay = b / nr2
         for i in range(nr2):
-            y.append(i*deltay)
+            y.append(i * deltay)
         ax = y
         if npt > nr2:
-            axnew = np.linspace(min(ax),max(ax),npt) 
-            average_smooth= spline(ax,average,axnew)
+            axnew = np.linspace(min(ax), max(ax), npt)
+            average_smooth = spline(ax, average, axnew)
             ax = axnew
             average = average_smooth
-            
+
     if axis == 'z':
-        npt = nr3x 
+        npt = nr3x
         average = np.zeros(shape=(nr3))
         for k in range(nr3):
             for j in range(nr2):
                 for i in range(nr1):
-                    ir = i +(j-1)*nr1x +(k-1)*nr1x*nr2x
+                    ir = i + (j - 1) * nr1x + (k - 1) * nr1x * nr2x
                     average[k] += grid[ir]
-            average[k] = average[k]*13.6058/(nr1*nr2)
-        z =[]
-        c=sqrt(cell[2][0]**2 + cell[2][1]**2 +cell[2][2]**2)
-        deltaz = c/nr3
+            average[k] = average[k] * 13.6058 / (nr1 * nr2)
+        z = []
+        c = sqrt(cell[2][0]**2 + cell[2][1]**2 + cell[2][2]**2)
+        deltaz = c / nr3
         for i in range(nr3):
-            z.append(i*deltaz)
+            z.append(i * deltaz)
         ax = z
         if npt > nr3:
-            axnew = np.linspace(min(ax),max(ax),npt) 
-            average_smooth= spline(ax,average,axnew)
+            axnew = np.linspace(min(ax), max(ax), npt)
+            average_smooth = spline(ax, average, axnew)
             ax = axnew
             average = average_smooth
 
-    return {'average' : average,'ax': ax, 'npt' : int(npt)}
+    return {'average': average, 'ax': ax, 'npt': int(npt)}
 
-def differentiator(x,y):
+
+def differentiator(x, y):
     """
     First Derivative calculation
     :param x: numpy array with the independent variable
     :param y: numpa array with the depedent variable
     :return derivative: numpy array of the first derivative
     """
-   
-    return np.gradient(y)/np.gradient(x)
+
+    return np.gradient(y) / np.gradient(x)
 
 
 def trilinear_interpolation(Grid, structure):
@@ -248,54 +248,53 @@ def trilinear_interpolation(Grid, structure):
     from numpy import linspace, zeros, array
     from math import sqrt
     from mpmath import nint
-    
+
     #Extracting the 3D-FFT grid and the dictionary with information on the shape of the grid
     grid = Grid['fft_grid'].get_array('fft_grid_reshaped')
     info = Grid['info'].get_dict()
-    
+
     nr1x = info['nr1x']
     nr2x = info['nr2x']
     nr3x = info['nr3x']
     nr1 = info['nr1']
     nr2 = info['nr2']
     nr3 = info['nr3']
-   
+
     #Setting the points along the x, y, and z dimensions so that the unit in Angstrom
     cell = structure.cell
-    x =[]
-    a=sqrt(cell[0][0]**2 + cell[0][1]**2 +cell[0][2]**2)
-    deltax = a/nr1
+    x = []
+    a = sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2)
+    deltax = a / nr1
     for i in range(nr1):
-        x.append(i*deltax)
-    
-    y =[]
-    b=sqrt(cell[1][0]**2 + cell[1][1]**2 +cell[1][2]**2)
-    deltay = b/nr2
+        x.append(i * deltax)
+
+    y = []
+    b = sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2)
+    deltay = b / nr2
     for i in range(nr2):
-        y.append(i*deltay)    
-    z =[]
-    c=sqrt(cell[2][0]**2 + cell[2][1]**2 +cell[2][2]**2)
-    deltaz = c/nr3
+        y.append(i * deltay)
+    z = []
+    c = sqrt(cell[2][0]**2 + cell[2][1]**2 + cell[2][2]**2)
+    deltaz = c / nr3
     for i in range(nr3):
-        z.append(i*deltaz)
+        z.append(i * deltaz)
 
     x = np.array(x)
     y = np.array(y)
     z = np.array(z)
 
-    #Initialization of the grid interpolation function 
+    #Initialization of the grid interpolation function
     V = grid
-    fn = RegularGridInterpolator((x,y,z), V)
-    
+    fn = RegularGridInterpolator((x, y, z), V)
+
     #Creating a dictionary containing
     atoms = {}
-    symbols=[]
+    symbols = []
     for site in structure.sites:
         for kind in structure.kinds:
             if kind.name == site.kind_name:
                 symbols.append(kind.symbol)
 
-    
     for i, site in enumerate(structure.sites):
         x = site.position[0]
         x = x - nint(x / a) * a
@@ -303,17 +302,16 @@ def trilinear_interpolation(Grid, structure):
         y = y - nint(y / b) * b
         z = site.position[2]
         z = z - nint(z / c) * c
-        atoms[symbols[i]+'_'+str(site.position)] = np.array([x,y,z])
-    
+        atoms[symbols[i] + '_' + str(site.position)] = np.array([x, y, z])
+
     func = {}
     for atom, position in six.iteritems(atoms):
         func[atom] = float(fn(position)[0])
-    
 
-    return {'func_at_core' : func, 'symbols' : symbols}
+    return {'func_at_core': func, 'symbols': symbols}
 
 
-def avg_potential_at_core(func_at_core,symbols):
+def avg_potential_at_core(func_at_core, symbols):
     """
     Computes the average potential per type of atom in the structure
     :param func_at_core: dictionary with potential at each core extracted from the interpolation of the FFT grid
@@ -332,8 +330,8 @@ def avg_potential_at_core(func_at_core,symbols):
             if atom.split('_')[0] == specie:
                 pot_at_core.append(pot)
 
-        avg_pot_at_core[str(specie)] = np.mean(np.array(pot_at_core).astype(np.float))
+        avg_pot_at_core[str(specie)] = np.mean(
+            np.array(pot_at_core).astype(np.float))
         pot_at_core = []
 
     return avg_pot_at_core
-

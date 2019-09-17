@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-###########################################################################
-# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
-#                                                                         #
-# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
-# For further information on the license, see the LICENSE.txt file        #
-###########################################################################
+########################################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
+#                                                                                      #
+# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# For further information on the license, see the LICENSE.txt file                     #
+########################################################################################
 from __future__ import absolute_import
 
 
@@ -27,22 +27,18 @@ def run_pw_calculation(pw_inputs, charge, run_type, additional_inputs):
         A future representing the submitted calculation
     """
 
-
-    required_keys = [           
-        'code' ,
-        'pseudo_family',
-        'parameters',
-        'settings',
-        'options',
+    required_keys = [
+        'code', 'pseudo_family', 'parameters', 'settings', 'options',
         'structure'
     ]
-    
+
     # Validate input dictionary
     for key in required_keys:
         if key not in pw_inputs:
-            raise KeyError("Required key, '{}' not found in input dictionary".format(key))
+            raise KeyError(
+                "Required key, '{}' not found in input dictionary".format(key))
 
-    # Validate 'run_type' 
+    # Validate 'run_type'
     if run_type not in ['scf', 'relax', 'vc-relax']:
         raise ValueError("Run type, '{}', not recognised".format(run_type))
 
@@ -65,18 +61,15 @@ def run_pw_calculation(pw_inputs, charge, run_type, additional_inputs):
         # for item in additional_inputs:
         #     if item in pw_inputs:
 
-        running = submit(PwRelaxWorkChain,**inputs)
+        running = submit(PwRelaxWorkChain, **inputs)
         self.report(
-            'Launching PwRelaxWorkChain for structure, {}, with charge {} (PK={})'.format(
-                pw_inputs.structure, charge, running.pid)
-        )
+            'Launching PwRelaxWorkChain for structure, {}, with charge {} (PK={})'
+            .format(pw_inputs.structure, charge, running.pid))
         return running
 
-    else:             
-        running = submit(PwBaseWorkChain,**inputs)
+    else:
+        running = submit(PwBaseWorkChain, **inputs)
         self.report(
-            'Launching PwBaseWorkChain for structure, {}, with charge {} (PK={})'.format(
-                pw_inputs.structure, charge, running.pid)
-        )        
+            'Launching PwBaseWorkChain for structure, {}, with charge {} (PK={})'
+            .format(pw_inputs.structure, charge, running.pid))
         return running
-    

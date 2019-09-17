@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
-###########################################################################
-# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
-#                                                                         #
-# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
-# For further information on the license, see the LICENSE.txt file        #
-###########################################################################
+########################################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
+#                                                                                      #
+# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# For further information on the license, see the LICENSE.txt file                     #
+########################################################################################
 from __future__ import absolute_import
 from __future__ import print_function
 from aiida.work.workchain import WorkChain
 from aiida_defects.pp.pp import PpWorkChain
 from aiida_defects.pp.fft_tools import planar_average, read_grid, differentiator
 from six.moves import range
+
 
 class SlabEpsilonSawtoothWorkChain(WorkChain):
     """
@@ -25,26 +26,43 @@ class SlabEpsilonSawtoothWorkChain(WorkChain):
     - change to compute low_frequency. this require cvhanging the Ppworkchain commenting the line for scf
       and update structure                                                                                                                                                                                         
     """
+
     @classmethod
     def define(cls, spec):
         super(SlabEpsilonSawtoothWorkChain, cls).define(spec)
-        spec.input("structure",valid_type=StructureData)
-        spec.input("code_pw",valid_type=Str,required=False)
-        spec.input("code_pp",valid_type=Str,required=False)
-        spec.input("pseudo_family",valid_type=Str, required = False)
+        spec.input("structure", valid_type=StructureData)
+        spec.input("code_pw", valid_type=Str, required=False)
+        spec.input("code_pp", valid_type=Str, required=False)
+        spec.input("pseudo_family", valid_type=Str, required=False)
         spec.input('options', valid_type=ParameterData)
         spec.input("settings", valid_type=ParameterData)
-        spec.input("kpoints", valid_type=KpointsData, required = False)
-        spec.input('parameters', valid_type=ParameterData, required = False)
-        spec.input('magnetic_phase', valid_type=Str,required=False, default=Str('NM'))
-        spec.input('B_atom', valid_type=Str,required=False)
-        spec.input('hubbard_u', valid_type=ParameterData, required=False, default=ParameterData(dict={}))
-        spec.input('epsilon_type', valid_type=Str, required=False, default=Str('high-frequency'))
-        spec.input('eamp', valid_type=Float, required=False, default=Float(0.001))
-        spec.input('eopreg', valid_type=Float, required=False, default=Float(0.01))
-        spec.input('emaxpos', valid_type=Float, required=False, default=Float(0.75))
+        spec.input("kpoints", valid_type=KpointsData, required=False)
+        spec.input('parameters', valid_type=ParameterData, required=False)
+        spec.input(
+            'magnetic_phase',
+            valid_type=Str,
+            required=False,
+            default=Str('NM'))
+        spec.input('B_atom', valid_type=Str, required=False)
+        spec.input(
+            'hubbard_u',
+            valid_type=ParameterData,
+            required=False,
+            default=ParameterData(dict={}))
+        spec.input(
+            'epsilon_type',
+            valid_type=Str,
+            required=False,
+            default=Str('high-frequency'))
+        spec.input(
+            'eamp', valid_type=Float, required=False, default=Float(0.001))
+        spec.input(
+            'eopreg', valid_type=Float, required=False, default=Float(0.01))
+        spec.input(
+            'emaxpos', valid_type=Float, required=False, default=Float(0.75))
         spec.input('edir', valid_type=Int, required=False, default=Int(3))
-        spec.input('sigma', valid_type=Float, required=False, default=Float(0.5))
+        spec.input(
+            'sigma', valid_type=Float, required=False, default=Float(0.5))
         spec.outline(
             cls.initializing_e0,
             cls.run_ppworkchain_e0,
@@ -54,16 +72,18 @@ class SlabEpsilonSawtoothWorkChain(WorkChain):
             cls.run_ppworkchain_e1_saw,
             cls.retrieve_potentials,
             cls.compute_epsilon_profile,
-            )
+        )
         spec.dynamic_output()
-        
+
     def initializing_e0(self):
         """
         Initializing inputs for the first calculation with a field amplitude of 0.0 a.u.
         """
 
-        self.ctx.parameters_pp = ParameterData(dict={'INPUTPP': {'plot_num' : 11,
-                                                                }}) 
+        self.ctx.parameters_pp = ParameterData(
+            dict={'INPUTPP': {
+                'plot_num': 11,
+            }})
         parameters = self.inputs.parameters.get_dict()
         if str(self.inputs.epsilon_type) == 'high-frequency':
             parameters['CONTROL']['calculation'] = 'scf'
@@ -75,42 +95,45 @@ class SlabEpsilonSawtoothWorkChain(WorkChain):
         parameters['SYSTEM']['edir'] = int(self.inputs.edir)
         parameters['SYSTEM']['emaxpos'] = float(self.inputs.emaxpos)
         parameters['SYSTEM']['eopreg'] = float(self.inputs.eopreg)
-        parameters['SYSTEM']['eamp'] = 0.0#int(self.inputs.eamp)
-        self.ctx.parameters=ParameterData(dict=parameters)
-        
-        self.ctx.inputs_e0 = {'structure' : self.inputs.structure,
-                      'code_pw' : self.inputs.code_pw,
-                      'pseudo_family' : self.inputs.pseudo_family,
-                      'kpoints' : self.inputs.kpoints,
-                      'parameters' : self.ctx.parameters,
-                      'parameters_pp' : self.ctx.parameters_pp,
-                      'settings' : self.inputs.settings,
-                      'options' : self.inputs.options,
-                      'code_pp' : self.inputs.code_pp,
-                      'pw_calc' : Bool(True),
-                      'B_atom' : self.inputs.B_atom,
-                      'magnetic_phase' : self.inputs.magnetic_phase,
-                     }  
-        
+        parameters['SYSTEM']['eamp'] = 0.0  #int(self.inputs.eamp)
+        self.ctx.parameters = ParameterData(dict=parameters)
+
+        self.ctx.inputs_e0 = {
+            'structure': self.inputs.structure,
+            'code_pw': self.inputs.code_pw,
+            'pseudo_family': self.inputs.pseudo_family,
+            'kpoints': self.inputs.kpoints,
+            'parameters': self.ctx.parameters,
+            'parameters_pp': self.ctx.parameters_pp,
+            'settings': self.inputs.settings,
+            'options': self.inputs.options,
+            'code_pp': self.inputs.code_pp,
+            'pw_calc': Bool(True),
+            'B_atom': self.inputs.B_atom,
+            'magnetic_phase': self.inputs.magnetic_phase,
+        }
+
     def run_ppworkchain_e0(self):
         """
         Running PpWorkChain to compute the electrostatic potential (V0) for tha case in which the amplitude
         if the applied field is 0 a.u.
         """
-        
-        running = submit(PpWorkChain,**self.ctx.inputs_e0)
-        self.report('Launching PpWorkChain for a FEF calculation with amplitude 0.0 a.u.. pk value {}'.format(
-                                                                                                    running.pid))  
-        return ToContext(ppcalc_e0= running)
-    
+
+        running = submit(PpWorkChain, **self.ctx.inputs_e0)
+        self.report(
+            'Launching PpWorkChain for a FEF calculation with amplitude 0.0 a.u.. pk value {}'
+            .format(running.pid))
+        return ToContext(ppcalc_e0=running)
+
     def initializing_e1(self):
         """
         Initializing inputs for the  calculation with a field amplitude different from 0.0 a.u.
         """
-        parameters_pp = ParameterData(dict={'INPUTPP': {'plot_num' : 11,
-                                                                }}) 
+        parameters_pp = ParameterData(dict={'INPUTPP': {
+            'plot_num': 11,
+        }})
         parameters = self.inputs.parameters.get_dict()
-        
+
         if str(self.inputs.epsilon_type) == 'high-frequency':
             parameters['CONTROL']['calculation'] = 'scf'
         elif str(self.inputs.epsilon_type) == 'low-frequency':
@@ -122,32 +145,33 @@ class SlabEpsilonSawtoothWorkChain(WorkChain):
         parameters['SYSTEM']['emaxpos'] = float(self.inputs.emaxpos)
         parameters['SYSTEM']['eopreg'] = float(self.inputs.eopreg)
         parameters['SYSTEM']['eamp'] = float(self.inputs.eamp)
-        self.ctx.parameters_e1=ParameterData(dict=parameters)
-        
-        self.ctx.inputs_e1 = {'structure' : self.inputs.structure,
-                      'code_pw' : self.inputs.code_pw,
-                      'pseudo_family' : self.inputs.pseudo_family,
-                      'kpoints' : self.inputs.kpoints,
-                      'parameters' : self.ctx.parameters_e1,
-                      'parameters_pp' : parameters_pp,
-                      'settings' : self.inputs.settings,
-                      'options' : self.inputs.options,
-                      'code_pp' : self.inputs.code_pp,
-                      'pw_calc' : Bool(True),
-                      'B_atom' : self.inputs.B_atom,
-                      'magnetic_phase' : self.inputs.magnetic_phase,
-                     } 
-    
+        self.ctx.parameters_e1 = ParameterData(dict=parameters)
+
+        self.ctx.inputs_e1 = {
+            'structure': self.inputs.structure,
+            'code_pw': self.inputs.code_pw,
+            'pseudo_family': self.inputs.pseudo_family,
+            'kpoints': self.inputs.kpoints,
+            'parameters': self.ctx.parameters_e1,
+            'parameters_pp': parameters_pp,
+            'settings': self.inputs.settings,
+            'options': self.inputs.options,
+            'code_pp': self.inputs.code_pp,
+            'pw_calc': Bool(True),
+            'B_atom': self.inputs.B_atom,
+            'magnetic_phase': self.inputs.magnetic_phase,
+        }
+
     def run_ppworkchain_e1(self):
         """
         Running PpWorkChain to compute the electrostatic potential (V1) for the case in which the amplitude
         if the applied field is different from 0 a.u.
         """
-        running = submit(PpWorkChain,**self.ctx.inputs_e1)
-        self.report('Launching PpWorkChain for a FEF calculation with amplitude {} a.u.. pk value {}'.format(
-                                                                                                    self.inputs.eamp,
-                                                                                                    running.pid))  
-        return ToContext(ppcalc_e1= running)
+        running = submit(PpWorkChain, **self.ctx.inputs_e1)
+        self.report(
+            'Launching PpWorkChain for a FEF calculation with amplitude {} a.u.. pk value {}'
+            .format(self.inputs.eamp, running.pid))
+        return ToContext(ppcalc_e1=running)
 
     def initializing_e1_saw(self):
         """
@@ -156,40 +180,42 @@ class SlabEpsilonSawtoothWorkChain(WorkChain):
         the PwCalculation performed in the previous step.
         """
 
-        
-        parameters_pp = ParameterData(dict={'INPUTPP': {'plot_num' : 12,
-                                                                }}) 
+        parameters_pp = ParameterData(dict={'INPUTPP': {
+            'plot_num': 12,
+        }})
         parent_folder = self.ctx.ppcalc_e1.out.remote_folder
-        
-        self.ctx.inputs_e1_saw = {'structure' : self.inputs.structure,
-                                  'parameters_pp' : parameters_pp,
-                                  'settings' : self.inputs.settings,
-                                  'options' : self.inputs.options,
-                                  'code_pp' : self.inputs.code_pp,
-                                  'pw_calc' : Bool(False),
-                                  'remote_folder' : parent_folder,
 
-                     } 
-    
+        self.ctx.inputs_e1_saw = {
+            'structure': self.inputs.structure,
+            'parameters_pp': parameters_pp,
+            'settings': self.inputs.settings,
+            'options': self.inputs.options,
+            'code_pp': self.inputs.code_pp,
+            'pw_calc': Bool(False),
+            'remote_folder': parent_folder,
+        }
+
     def run_ppworkchain_e1_saw(self):
         """
         Running the PpWorkChain to calculate the sawtooth potential (V_saw)
         """
-        running = submit(PpWorkChain,**self.ctx.inputs_e1_saw)
-        self.report('Launching PpWorkChain to compute the sawtooth potential. pk value {}'.format(running.pid))  
-        return ToContext(ppcalc_e1_saw= running)
-    
+        running = submit(PpWorkChain, **self.ctx.inputs_e1_saw)
+        self.report(
+            'Launching PpWorkChain to compute the sawtooth potential. pk value {}'
+            .format(running.pid))
+        return ToContext(ppcalc_e1_saw=running)
+
     def retrieve_potentials(self):
         """
         Retreiving the 3D-FFT grid for each of the three potentials and storing the grids in the DB
         """
-        self.ctx.grid_e0 = read_grid(self.ctx.ppcalc_e0.out.retrieved) 
+        self.ctx.grid_e0 = read_grid(self.ctx.ppcalc_e0.out.retrieved)
         self.ctx.grid_e1 = read_grid(self.ctx.ppcalc_e1.out.retrieved)
         self.ctx.grid_e1_saw = read_grid(self.ctx.ppcalc_e1_saw.out.retrieved)
         self.out('fft_grid_V0', self.ctx.grid_e0['fft_grid'])
         self.out('fft_grid_V1', self.ctx.grid_e1['fft_grid'])
         self.out('fft_grid_V_saw', self.ctx.grid_e1_saw['fft_grid'])
-        
+
     def compute_epsilon_profile(self):
         """
         Computing the dielectric constant profile epsilon=(dV_saw/dz)/(d(V1-V0)/dz)
@@ -201,14 +227,10 @@ class SlabEpsilonSawtoothWorkChain(WorkChain):
         elif int(self.inputs.edir) == 3:
             axis = 'z'
 
-        epsilon = dielectric_profile_along_axis(self.inputs.structure,
-                                      self.inputs.structure,
-                                      self.ctx.grid_e0,
-                                      self.ctx.grid_e1,
-                                      self.inputs.structure,
-                                      self.ctx.grid_e1_saw,
-                                      axis,
-                                      float(self.inputs.sigma))
+        epsilon = dielectric_profile_along_axis(
+            self.inputs.structure, self.inputs.structure, self.ctx.grid_e0,
+            self.ctx.grid_e1, self.inputs.structure, self.ctx.grid_e1_saw,
+            axis, float(self.inputs.sigma))
         self.out('epsilon', epsilon)
         self.report("SlabEpsilonSawtoothWorkChain completed succesfully")
 
@@ -249,33 +271,37 @@ def dielectric_profile_along_axis(structure_a,
     from mpmath import nint
     from scipy import signal
 
-    
-    #Computing the planar avareged electrostatic potential V along the axis 
+    #Computing the planar avareged electrostatic potential V along the axis
     V_a = planar_average(potential_a, structure_a, str(axis), npt=400)
     V_b = planar_average(potential_b, structure_b, str(axis), npt=400)
     E = planar_average(sawtooth, structure_saw, str(axis), npt=400)
-    
+
     #Computing Delta V
     Vdiff = V_a['average'] - V_b['average']
     ax = V_a['ax']
-    
-    
+
     #Identifying position of the slab/vacuum interface using the coordinates of the outermost atoms
-    cell=structure_a.cell
-    coords=[]
+    cell = structure_a.cell
+    coords = []
     if axis == 'x':
-        lenght=(sqrt(cell[0][0]**2 + cell[0][1]**2 +cell[0][2]**2))
+        lenght = (sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2))
         for site in structure_a.sites:
-            coords.append(float(site.position[0] - nint(site.position[0] / lenght) * lenght))
+            coords.append(
+                float(site.position[0] -
+                      nint(site.position[0] / lenght) * lenght))
 
     if axis == 'y':
-        lenght=(sqrt(cell[1][0]**2 + cell[1][1]**2 +cell[1][2]**2))
+        lenght = (sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2))
         for site in structure_a.sites:
-            coords.append(flaot(site.position[1] - nint(site.position[1] / lenght) * lenght))    
+            coords.append(
+                flaot(site.position[1] -
+                      nint(site.position[1] / lenght) * lenght))
     if axis == 'z':
-        lenght=(sqrt(cell[2][0]**2 + cell[2][1]**2 +cell[2][2]**2))
+        lenght = (sqrt(cell[2][0]**2 + cell[2][1]**2 + cell[2][2]**2))
         for site in structure_a.sites:
-            coords.append(float(site.position[2] - nint(site.position[2] / lenght) * lenght))
+            coords.append(
+                float(site.position[2] -
+                      nint(site.position[2] / lenght) * lenght))
 
     coords = sorted(coords, key=int)
 
@@ -283,63 +309,61 @@ def dielectric_profile_along_axis(structure_a,
     vacuum_min = None
     plane_dists = []
 
-    for i in range(len(coords)-1):
-        plane_dists.append(abs(coords[i]-coords[i+1]))
-        print(i, coords[i], coords[i+1], abs(coords[i]-coords[i+1]))
-        if abs(coords[i]-coords[i+1]) > 5.:
-            vacuum_max = coords[i+1]
+    for i in range(len(coords) - 1):
+        plane_dists.append(abs(coords[i] - coords[i + 1]))
+        print(i, coords[i], coords[i + 1], abs(coords[i] - coords[i + 1]))
+        if abs(coords[i] - coords[i + 1]) > 5.:
+            vacuum_max = coords[i + 1]
             vacuum_min = coords[i]
 
     if vacuum_max == None or v_min == None:
         vacuum_max = max(coords)
         vacuum_min = min(coords) + lenght
 
-    #print vacuum_max, vacuum_min   
+    #print vacuum_max, vacuum_min
 
-    vacuum_center = (vacuum_max+vacuum_min)*0.5
-    dist=abs(vacuum_max - vacuum_center)
-    smooth_percent = dist*0.85
+    vacuum_center = (vacuum_max + vacuum_min) * 0.5
+    dist = abs(vacuum_max - vacuum_center)
+    smooth_percent = dist * 0.85
 
-    lim1= vacuum_center - smooth_percent
-    lim2= vacuum_center + smooth_percent
+    lim1 = vacuum_center - smooth_percent
+    lim2 = vacuum_center + smooth_percent
     #print "lim1, lim2", lim1, lim2
-    
-    
+
     #Computing Delta_V derivative
     der_Vdiff = differentiator(ax, Vdiff)
-    
+
     #Computing Sawtooth potential derivative
     der_E = differentiator(E['ax'], E['average'])
-    
+
     #Calculating epsilon
-    eps = der_E/der_Vdiff
-    
+    eps = der_E / der_Vdiff
+
     #Imposing that in the vacuum region epsilon is equal to 1:
     for i in range(len(ax)):
         if ax[i] > lim1 and ax[i] < lim2:
             eps[i] = 1.0
 
-    
     #Smoothing epsilon with Gaussian kernel
-    ncol=len(eps)
+    ncol = len(eps)
     if sigma == -100.:
-        sigma = max(plane_dists)*0.5 
-    sigma *= ncol/lenght 
-    
+        sigma = max(plane_dists) * 0.5
+    sigma *= ncol / lenght
+
     #print "SIGMA", sigma
     kernel = signal.gaussian(ncol, sigma)
     kernel /= kernel.sum()
     epsilon = signal.fftconvolve(eps, kernel, mode='same')
-    
+
     #Storing the dielectric profile into an 2D ArrayData object with the axis and dielectric constant values
     profile = np.vstack((ax, epsilon)).T
     slabeps = ArrayData()
     slabeps.set_array('epsilon', profile)
-    
+
     #Storing the profile also into a file
-    plt.plot(ax,epsilon)
-    plt.xlabel(str(axis)+ur' (\u00c5)', fontsize=13)
-    plt.ylabel(r'$\epsilon$('+str(axis)+')', fontsize=12)
-    plt.savefig(str(structure_a.pk)+'_epsilon.pdf')
+    plt.plot(ax, epsilon)
+    plt.xlabel(str(axis) + ur' (\u00c5)', fontsize=13)
+    plt.ylabel(r'$\epsilon$(' + str(axis) + ')', fontsize=12)
+    plt.savefig(str(structure_a.pk) + '_epsilon.pdf')
     plt.show()
     return slabeps

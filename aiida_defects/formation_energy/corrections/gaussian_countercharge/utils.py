@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
-###########################################################################
-# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
-#                                                                         #
-# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
-# For further information on the license, see the LICENSE.txt file        #
-###########################################################################
+########################################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
+#                                                                                      #
+# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# For further information on the license, see the LICENSE.txt file                     #
+########################################################################################
 from __future__ import absolute_import
 
 import numpy as np
-from aiida import orm 
+from aiida import orm
 from aiida.engine import calcfunction
 """
 Utility functions for the gaussian countercharge workchain
 """
+
 
 @calcfunction
 def create_model_structure(base_structure, scale_factor):
@@ -27,7 +28,8 @@ def create_model_structure(base_structure, scale_factor):
 
 
 @calcfunction
-def get_correction_energy(model_correction, alignment_dft_model, alignment_q0_host, charge):
+def get_correction_energy(model_correction, alignment_dft_model,
+                          alignment_q0_host, charge):
     """
     Calculate the total correction, including the potential alignments
 
@@ -51,8 +53,9 @@ def get_correction_energy(model_correction, alignment_dft_model, alignment_q0_ho
         The calculated correction
     
     """
-    
-    correction = model_correction - (charge*alignment_dft_model) - (charge*alignment_q0_host)
+
+    correction = model_correction - (charge * alignment_dft_model) - (
+        charge * alignment_q0_host)
 
     return correction
 
@@ -70,7 +73,7 @@ def fit_energies(dimensions_dict, energies_dict):
 
     from scipy.optimize import curve_fit
 
-    def fitting_func(x,a,b,c):
+    def fitting_func(x, a, b, c):
         """
         Function to fit:
         E = a*Omega^(-3) + b*Omega^(-1) + c
@@ -85,8 +88,7 @@ def fit_energies(dimensions_dict, energies_dict):
         a,b,c: Float
             Parameters to fit
         """
-        return a*x + b*x**3 + c
-
+        return a * x + b * x**3 + c
 
     dimensions_dict = dimensions_dict.get_dict()
     energies_dict = energies_dict.get_dict()
@@ -104,8 +106,8 @@ def fit_energies(dimensions_dict, energies_dict):
 
     # Fit the data to the function
 
-    
-    fit_params = curve_fit(fitting_func, np.array(linear_dim_list), np.array(energy_list))[0]
+    fit_params = curve_fit(fitting_func, np.array(linear_dim_list),
+                           np.array(energy_list))[0]
 
     # Get the isolated model energy at linear dimension = 0.0
     isolated_energy = fitting_func(0.0, *fit_params)
@@ -125,8 +127,6 @@ def calc_correction(isolated_energy, model_energy):
     *model_energies: orm.Float objects
         Any number of calculated model energies
     """
-    correction_energy = isolated_energy-model_energy
-    
+    correction_energy = isolated_energy - model_energy
+
     return orm.Float(correction_energy)
-
-

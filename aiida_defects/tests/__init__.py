@@ -28,7 +28,7 @@ def get_path_to_executable(executable):
     :return: path to executable
     :rtype: str
     """
-    # pylint issue https://github.com/PyCQA/pylint/issues/73
+    # pylint issue https://github.com/ConradJohnston/aiida-defectsQA/pylint/issues/73
     import distutils.spawn  # pylint: disable=no-name-in-module,import-error
     path = distutils.spawn.find_executable(executable)
     if path is None:
@@ -164,8 +164,8 @@ def test_calculation_execution(calc,
         st = os.stat(script_path)
         os.chmod(script_path, st.st_mode | stat.S_IEXEC)
         # now call script, NB: bash -l -c is required to access global variable loaded in .bash_profile
-        returncode = subprocess.call(
-            ["bash", "-l", "-c", script_path], cwd=subfolder.abspath)
+        returncode = subprocess.call(["bash", "-l", "-c", script_path],
+                                     cwd=subfolder.abspath)
 
         if returncode not in allowed_returncodes:
 
