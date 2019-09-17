@@ -30,7 +30,7 @@ class PointCounterChargeWorkchain(WorkChain):
     procedure:
     1) we remove all the atoms from the bulk/host optimized structure
     2) we add one H atom in the middle of the cell (or in the defect position)
-    3) we perform an scf calculation and DeltaE_1 corresponds to the ewald energy in the QE output
+    3) we perform an scf calculation and DeltaE_1 corresponds to the Ewald energy in the QE output
 
     """
 
@@ -90,20 +90,20 @@ class PointCounterChargeWorkchain(WorkChain):
 
         running = submit(PwBaseWorkChain, **inputs)
         self.report(
-            'Launching PwBaseWorkChain for the calculation of the first order Makov Payne Correction. pk value {}'
+            'Launching PwBaseWorkChain for the calculation of the first order Makov-Payne Correction. pk value {}'
             .format(running.pid))
         return ToContext(pwcalc=running)
 
     def retreive_ewald_energy(self):
         """
-        Retreiving the ewald energy for the previous PwCalculation
+        Retreiving the Ewald energy for the previous PwCalculation
         """
         self.ctx.ewald_energy = self.ctx.pwcalc.get_outputs_dict(
         )['output_parameters'].dict.energy_ewald
 
     def compute_correction(self):
         """
-        Computing Makov Payne Correction
+        Computing Makov-Payne Correction
         """
         #Setting c_sh values
 
@@ -147,6 +147,6 @@ class PointCounterChargeWorkchain(WorkChain):
         E_MP = (1. + c_sh * (1. - 1. / epsilon_r)
                 ) * charge**2 * self.ctx.ewald_energy / epsilon_r
 
-        self.out('Makov_Payne_Correction', Float(E_MP))
-        self.report('Makov Payne Correction {}'.format(E_MP))
-        self.report('MakovPayneCorrection workchain completed succesfully')
+        self.out('Makov_Payne_Correction', orm.Float(E_MP))
+        self.report('Makov-Payne Correction {}'.format(E_MP))
+        self.report('PointCounterCharge workchain completed successfully')

@@ -6,34 +6,12 @@
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
-import sys
-import argparse
-import pymatgen
+
 import numpy as np
-from aiida.orm.data.upf import UpfData
-from aiida.common.exceptions import NotExistent
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.structure import StructureData
-from aiida.orm.data.array.kpoints import KpointsData
-from aiida.orm.data.array import ArrayData
-from aiida.orm.data.folder import FolderData
-from aiida.orm.data.remote import RemoteData
-from aiida.orm import DataFactory
-from aiida.orm.node import Node
-from aiida.orm.code import Code
-from aiida.orm import load_node
-
-from aiida.work.run import run, submit
-from aiida.work.workfunction import workfunction
-from aiida.work.workchain import WorkChain, ToContext, while_, Outputs, if_, append_
-from aiida.orm.data.base import Float, Str, NumericType, BaseType, Int, Bool, List
-
-from aiida_quantumespresso.workflows.pw.bands import PwBandsWorkChain
-import six
-from six.moves import range
-from six.moves import zip
-
-######TODO: Apply create suitable input before submitting the PW calc
+from aiida import orm
+"""
+Utility functions for the bandiflling workchain
+"""
 
 
 def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
@@ -68,7 +46,6 @@ def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
     Modified from the find_bandgap function in /path/aiida/orm/data/array/bands.py
     so that it returns also VBM and CBM
     """
-    import numpy
 
     def nint(num):
         """
@@ -93,7 +70,7 @@ def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
         # spin up and spin down array
 
         # put all spins on one band per kpoint
-        bands = numpy.concatenate([_ for _ in stored_bands], axis=1)
+        bands = np.concatenate([_ for _ in stored_bands], axis=1)
     else:
         bands = stored_bands
 
@@ -116,7 +93,7 @@ def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
                 # spin up and spin down array
 
                 # put all spins on one band per kpoint
-                occupations = numpy.concatenate(
+                occupations = np.concatenate(
                     [_ for _ in stored_occupations], axis=1)
             else:
                 occupations = stored_occupations
@@ -127,7 +104,7 @@ def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
             # sort the bands by energy, and reorder the occupations accordingly
             # since after joining the two spins, I might have unsorted stuff
             bands, occupations = [
-                numpy.array(y) for y in zip(*[
+                np.array(y) for y in zip(*[
                     list(zip(*j)) for j in [
                         sorted(
                             zip(i[0].tolist(), i[1].tolist()),
@@ -140,7 +117,7 @@ def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
                 round(sum([sum(i) for i in occupations]) / num_kpoints))
 
             homo_indexes = [
-                numpy.where(numpy.array([nint(_) for _ in x]) > 0)[0][-1]
+                np.where(np.array([nint(_) for _ in x]) > 0)[0][-1]
                 for x in occupations
             ]
             if len(
@@ -157,7 +134,7 @@ def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
                         "need more bands than n_band=number_electrons")
 
         else:
-            bands = numpy.sort(bands)
+            bands = np.sort(bands)
             number_electrons = int(number_electrons)
 
             # find the zero-temperature occupation per band (1 for spin-polarized
@@ -310,139 +287,3 @@ def bandfilling_ms_correction(host_bandstructure, defect_bandstructure,
             E_acceptor += tmp
 
     return {'E_donor': E_donor, 'E_acceptor': E_acceptor}
-
-
-class BandFillingCorrectionWorkChain(WorkChain):
-    """
-    Workchain to compute band filling corrections
-    bands_NiO=run(PwBandsWorkChain,code=Code.get_from_string(codename), structure = s, pseudo_family=Str(pseudo_family),
-              options=ParameterData(dict=options), settings=ParameterData(dict=settings), kpoints_mesh=kpoints,
-              parameters=parameters, optimization=Bool(False), relax=relax)   
-    """
-
-    @classmethod
-    def define(cls, spec):
-        super(BandFillingCorrectionWorkChain, cls).define(spec)
-        spec.input("code", valid_type=Code)
-        spec.input("host_structure", valid_type=StructureData)
-        spec.input("defect_structure", valid_type=StructureData)
-        spec.input('options', valid_type=ParameterData)
-        spec.input("settings", valid_type=ParameterData)
-        spec.input('host_parameters', valid_type=ParameterData, required=False)
-        spec.input(
-            'defect_parameters', valid_type=ParameterData, required=False)
-        spec.input('pseudo_family', valid_type=Str)
-        spec.input('kpoints_mesh', valid_type=KpointsData, required=False)
-        spec.input('kpoints_distance', valid_type=Float, default=Float(0.2))
-        spec.input('potential_alignment', valid_type=Float, default=Float(0.))
-        spec.input(
-            'skip_relax', valid_type=Bool, required=False, default=Bool(True))
-        spec.input_group('relax')
-        spec.input('host_bandstructure', valid_type=Node, required=False)
-        spec.input('defect_bandstructure', valid_type=Node, required=False)
-        spec.outline(
-            if_(cls.should_run_host)(cls.run_host),
-            if_(cls.should_run_defect)(cls.run_defect),
-            cls.compute_band_filling, cls.retrieve_bands)
-        spec.dynamic_output()
-
-    def should_run_host(self):
-        return not 'host_bandstructure' in self.inputs
-
-    def run_host(self):
-        if 'host_parameters' not in self.inputs:
-            self.abort_nowait(
-                'The host bandstructure calculation was requested but the "host parameters" dictionary\
-            was not provided')
-
-        inputs = {
-            'code': self.inputs.code,
-            'structure': self.inputs.host_structure,
-            'options': self.inputs.options,
-            'parameters': self.inputs.host_parameters,
-            'settings': self.inputs.settings,
-            'pseudo_family': self.inputs.pseudo_family,
-        }
-
-        if 'skip_relax' in self.inputs:
-            inputs['relax'] = self.inputs.relax
-        if 'kpoints_mesh' in self.inputs:
-            inputs['kpoints_mesh'] = self.inputs.kpoints_mesh
-
-        running = submit(PwBandsWorkChain, **inputs)
-        self.report(
-            'Launching the PwBandsWorkChain for the host with PK'.format(
-                running.pid))
-        return ToContext(host_bandsworkchain=running)
-
-    def should_run_defect(self):
-        return not 'defect_bandstructure' in self.inputs
-
-    def run_defect(self):
-        if 'defect_parameters' not in self.inputs:
-            self.abort_nowait(
-                'The defect bandstructure calculation was requested but the "host parameters" dictionary\
-            was not provided')
-
-        inputs = {
-            'code': self.inputs.code,
-            'structure': self.inputs.defect_structure,
-            'options': self.inputs.options,
-            'parameters': self.inputs.defect_parameters,
-            'settings': self.inputs.settings,
-            'pseudo_family': self.inputs.pseudo_family,
-        }
-
-        if 'skip_relax' in self.inputs:
-            inputs['relax'] = self.inputs.relax
-        if 'kpoints_mesh' in self.inputs:
-            inputs['kpoints_mesh'] = self.inputs.kpoints_mesh
-
-        running = submit(PwBandsWorkChain, **inputs)
-        #print "PK", running.pk
-        self.report(
-            'Launching the PwBandsWorkChain for the defect with PK'.format(
-                running.pid))
-        return ToContext(defect_bandsworkchain=running)
-
-    def compute_band_filling(self):
-        if 'host_bandstructure' in self.inputs:
-            host_bandstructure = self.inputs.host_bandstructure.out
-        else:
-            host_bandstructure = self.ctx.host_bandsworkchain.out
-        if 'defect_bandstructure' in self.inputs:
-            defect_bandstructure = self.inputs.defect_bandstructure.out
-        else:
-            defect_bandstructure = self.ctx.defect_bandsworkchain.out
-
-        self.ctx.band_filling = bandfilling_ms_correction(
-            host_bandstructure, defect_bandstructure,
-            float(self.inputs.potential_alignment))
-
-    def retrieve_bands(self):
-        """
-        Attach the relevant output nodes from the band calculation to the workchain outputs
-        for convenience
-        """
-        self.report('BandFillingCorrection workchain succesfully completed')
-
-        self.report(
-            'The computed band filling correction is <{}> and <{}> eV for a donor and an acceptor, respectively'
-            .format(self.ctx.band_filling['E_donor'],
-                    self.ctx.band_filling['E_acceptor']))
-
-        for label, value in six.iteritems(self.ctx.band_filling):
-            self.out(str(label), Float(value))
-
-
-#         for link_label in ['primitive_structure', 'seekpath_parameters', 'scf_parameters', 'band_parameters', 'band_structure']:
-#             if link_label in self.ctx.defect_bandsworkchain.out:
-#                 node = self.ctx.workchain_bands.get_outputs_dict()[link_label]
-#                 self.out('defect'+str(link_label), node)
-#                 self.report("attaching {}<{}> as an output node with label '{}'"
-#                     .format(node.__class__.__name__, node.pk, link_label))
-#             if link_label in self.ctx.host_bandsworkchain.out:
-#                 node = self.ctx.workchain_bands.get_outputs_dict()[link_label]
-#                 self.out('host'+str(link_label), node)
-#                 self.report("attaching {}<{}> as an output node with label '{}'"
-#                     .format(node.__class__.__name__, node.pk, link_label))
