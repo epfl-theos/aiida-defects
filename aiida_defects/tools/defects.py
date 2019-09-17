@@ -10,11 +10,10 @@ import sys
 import pymatgen
 import numpy as np
 from copy import deepcopy
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.structure import StructureData
-from aiida.orm.data.array import ArrayData
-from aiida.orm import DataFactory
-from aiida.work.workfunction import workfunction
+from aiida.orm.nodes import Dict
+from aiida.orm import StructureData
+from aiida.orm.nodes import ArrayData
+from aiida.engine import WorkFunction
 from aiida.orm.data.base import Float, Str, NumericType, BaseType, Int, Bool, List
 from aiida.orm import load_node
 import six
