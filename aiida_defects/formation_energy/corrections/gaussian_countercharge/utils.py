@@ -28,15 +28,12 @@ def create_model_structure(base_structure, scale_factor):
 
 
 @calcfunction
-def get_correction_energy(model_correction, alignment_dft_model,
-                          alignment_q0_host, charge):
+def get_total_alignment(alignment_dft_model, alignment_q0_host, charge):
     """
-    Calculate the total correction, including the potential alignments
+    Calculate the total potential alignment
 
     Parameters
     ----------
-    model_correction: orm.Float
-        The correction energy derived from the electrostatic model
     alignment_dft_model: orm.Float
         The correction energy derived from the alignment of the DFT difference 
         potential and the model potential
@@ -49,15 +46,41 @@ def get_correction_energy(model_correction, alignment_dft_model,
 
     Returns
     -------
-    difference_potential
-        The calculated correction
+    total_alignment
+        The calculated total potential alignment
     
     """
 
-    correction = model_correction - (charge * alignment_dft_model) - (
+    total_alignment = (charge * alignment_dft_model) + (
         charge * alignment_q0_host)
 
-    return correction
+    return total_alignment
+
+
+@calcfunction
+def get_total_correction(model_correction, total_alignment):
+    """
+    Calculate the total correction, including the potential alignments
+
+    Parameters
+    ----------
+    model_correction: orm.Float
+        The correction energy derived from the electrostatic model
+    total_alignment: orm.Float
+        The correction energy derived from the alignment of the DFT difference 
+        potential and the model potential, and alignment of the defect potential 
+        in the q=0 charge state and the potential of the pristine host structure
+
+    Returns
+    -------
+    total_correction
+        The calculated correction, including potential alignment
+    
+    """
+
+    total_correction = model_correction - total_alignment
+
+    return total_correction
 
 
 @calcfunction

@@ -15,7 +15,7 @@ from .model_potential.model_potential import ModelPotentialWorkchain
 from aiida_defects.formation_energy.common import run_pw_calculation
 
 from aiida_defects.formation_energy.potential_alignment.utils import get_potential_difference
-from aiida_defects.formation_energy.corrections.gaussian_countercharge.utils import get_correction_energy
+from aiida_defects.formation_energy.corrections.gaussian_countercharge.utils import get_total_correction, get_total_alignment
 
 from .utils import fit_energies, calc_correction
 
@@ -79,7 +79,9 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.output('v_dft_difference', valid_type=orm.ArrayData)
         spec.output('alignment_q0_to_host', valid_type=orm.Float)
         spec.output('alignment_dft_to_model', valid_type=orm.Float)
-        spec.output('correction_energy', valid_type=orm.Float)
+        spec.output('total_alignment', valid_type=orm.Float, required=True)
+        spec.output('total_correction', valid_type=orm.Float)
+        spec.output('electrostatic_correction', valid_type=orm.Float)
         spec.output('isolated_energy', valid_type=orm.Float, required=True)
         spec.output(
             'model_correction_energies', valid_type=orm.List, required=True)
@@ -309,13 +311,26 @@ class GaussianCounterChargeWorkchain(WorkChain):
 	    Compute the Gaussian Countercharge correction
         """
 
-        total_correction = get_correction_energy(
-            self.ctx.model_correction_energies['1'],
-            self.ctx.alignment_dft_to_model, self.ctx.alignment_q0_to_host,
-            self.inputs.defect_charge)
+        electrostatic_correction = self.ctx.model_correction_energies['1']
+
+        total_alignment = get_total_alignment(self.ctx.alignment_dft_to_model,
+                                              self.ctx.alignment_q0_to_host,
+                                              self.inputs.defect_charge)
+
+        total_correction = get_total_correction(electrostatic_correction,
+                                                total_alignment)
+
+        self.report('The computed total alignment is {} eV'.format(
+            total_alignment.value * hartree_to_ev))
+        self.out('total_alignment', total_alignment)
+
+        self.report('The computed electrostatic correction is {} eV'.format(
+            electrostatic_correction.value * hartree_to_ev))
+        self.out('electrostatic_correction', electrostatic_correction)
 
         self.report(
-            'The computed correction, including potential alignments, is {} eV'
+            'The computed total correction, including potential alignments, is {} eV'
             .format(total_correction.value * hartree_to_ev))
-        self.out('correction_energy', total_correction)
+        self.out('total_correction', total_correction)
+
         self.report('Gaussian Countercharge workchain completed successfully')

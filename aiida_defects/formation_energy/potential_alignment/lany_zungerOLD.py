@@ -12,6 +12,7 @@ import six
 from aiida.engine import calcfunction
 from aiida_defects.pp.fft_tools import avg_potential_at_core
 
+
 @calcfunction
 def lz_potential_alignment(bulk_structure,
                            bulk_sphere_pot,
