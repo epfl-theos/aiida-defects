@@ -27,7 +27,7 @@
     "reentry_register": true,
     "install_requires": [
         "aiida-core >= 1.0.0b1,<2.0.0",
-        "aiida-quantumespresso==3.0.0a3",
+        "aiida-quantumespresso>3.0.0a1",
         "pymatgen",
         "six"
     ],

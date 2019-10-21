@@ -12,7 +12,6 @@ from aiida import orm
 from aiida.common.constants import hartree_to_ev
 from aiida_defects.formation_energy.potential_alignment.potential_alignment import PotentialAlignmentWorkchain
 from .model_potential.model_potential import ModelPotentialWorkchain
-from aiida_defects.formation_energy.common import run_pw_calculation
 
 from aiida_defects.formation_energy.potential_alignment.utils import get_potential_difference
 from aiida_defects.formation_energy.corrections.gaussian_countercharge.utils import get_total_correction, get_total_alignment
