@@ -81,9 +81,8 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.output('total_alignment', valid_type=orm.Float, required=True)
         spec.output('total_correction', valid_type=orm.Float)
         spec.output('electrostatic_correction', valid_type=orm.Float)
-        spec.output('isolated_energy', valid_type=orm.Float, required=True)
-        spec.output(
-            'model_correction_energies', valid_type=orm.List, required=True)
+        # spec.output('isolated_energy', valid_type=orm.Float, required=True) # Not sure if anyone would use this
+        # spec.output('model_correction_energies', valid_type=orm.Dict, required=True) # Again, not sure if useful
         spec.exit_code(
             401,
             'ERROR_INVALID_INPUT_ARRAY',
@@ -274,6 +273,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         else:
             self.ctx.alignment_dft_to_model = alignment_wc.outputs.alignment_required
 
+
     def get_isolated_energy(self):
         """
         Fit the calculated model energies and obtain an estimate for the isolated model energy
@@ -295,6 +295,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         self.report("The isolated model energy is {} eV".format(
             self.ctx.isolated_energy.value * hartree_to_ev))
 
+
     def get_model_corrections(self):
         """
         Get the energy corrections for each model size
@@ -304,6 +305,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         for scale_factor, model_energy in self.ctx.model_energies.items():
             self.ctx.model_correction_energies[scale_factor] = calc_correction(
                 self.ctx.isolated_energy, model_energy)
+
 
     def compute_correction(self):
         """
@@ -331,5 +333,9 @@ class GaussianCounterChargeWorkchain(WorkChain):
             'The computed total correction, including potential alignments, is {} eV'
             .format(total_correction.value * hartree_to_ev))
         self.out('total_correction', total_correction)
+
+        # Store additional outputs
+        self.out('alignment_q0_to_host', self.ctx.alignment_q0_to_host)
+        self.out('alignment_dft_to_model', self.ctx.alignment_dft_to_model)
 
         self.report('Gaussian Countercharge workchain completed successfully')

@@ -93,7 +93,7 @@ class PotentialAlignmentWorkchain(WorkChain):
         """
 
         if self.ctx.interpolation_required:
-            self.report('Im doing the interpolation ma')
+            self.report('Doing potential alignment')
             # TODO: Call the interpolation function and update the context
 
         return

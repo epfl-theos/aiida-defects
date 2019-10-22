@@ -126,7 +126,7 @@ class ModelPotentialWorkchain(WorkChain):
             limits=self.ctx.limits)
 
         self.report("Calculated model energy: {} eV".format(
-            self.ctx.model_energy * hartree_to_ev))
+            self.ctx.model_energy.value * hartree_to_ev))
 
     def results(self):
         """

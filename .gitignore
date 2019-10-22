@@ -9,3 +9,5 @@
 .vscode/
 .history/
 docs/build
+
+.ipynb_checkpoints/
