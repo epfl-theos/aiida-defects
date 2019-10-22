@@ -41,13 +41,13 @@ class GaussianCounterChargeWorkchain(WorkChain):
             help="Defect site position in crystal coordinates")
         spec.input("host_structure", valid_type=orm.StructureData)
         spec.input(
-            "model_iterations_required",
-            valid_type=orm.Int,
-            default=orm.Int(3))
-        spec.input(
             "epsilon",
             valid_type=orm.Float,
             help="Dielectric constant for the host material")
+        spec.input(
+            "model_iterations_required",
+            valid_type=orm.Int,
+            default=orm.Int(3))
         spec.input(
             "cutoff",
             valid_type=orm.Float,
@@ -273,7 +273,6 @@ class GaussianCounterChargeWorkchain(WorkChain):
         else:
             self.ctx.alignment_dft_to_model = alignment_wc.outputs.alignment_required
 
-
     def get_isolated_energy(self):
         """
         Fit the calculated model energies and obtain an estimate for the isolated model energy
@@ -295,7 +294,6 @@ class GaussianCounterChargeWorkchain(WorkChain):
         self.report("The isolated model energy is {} eV".format(
             self.ctx.isolated_energy.value * hartree_to_ev))
 
-
     def get_model_corrections(self):
         """
         Get the energy corrections for each model size
@@ -305,7 +303,6 @@ class GaussianCounterChargeWorkchain(WorkChain):
         for scale_factor, model_energy in self.ctx.model_energies.items():
             self.ctx.model_correction_energies[scale_factor] = calc_correction(
                 self.ctx.isolated_energy, model_energy)
-
 
     def compute_correction(self):
         """
