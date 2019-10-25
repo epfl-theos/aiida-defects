@@ -9,10 +9,10 @@ from __future__ import absolute_import
 
 from aiida.engine import WorkChain, calcfunction, ToContext, while_
 from aiida import orm
-from aiida.common.constants import hartree_to_ev
+from qe_tools.constants import hartree_to_ev
+
 from aiida_defects.formation_energy.potential_alignment.potential_alignment import PotentialAlignmentWorkchain
 from .model_potential.model_potential import ModelPotentialWorkchain
-
 from aiida_defects.formation_energy.potential_alignment.utils import get_potential_difference
 from aiida_defects.formation_energy.corrections.gaussian_countercharge.utils import get_total_correction, get_total_alignment
 
@@ -58,7 +58,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         # spec.input("code_pw",valid_type=Str)
         # spec.input("pseudo_family",valid_type=Str)
         # spec.input('options', valid_type=ParameterData)
-        # spec.input("settings", valid_type=ParameterData)
+        # spec.input("settings", valid_type=ParameterData)  
         # spec.input("kpoints", valid_type=KpointsData)
         # spec.input('parameters', valid_type=ParameterData)
         # spec.input('epsilon_r', valid_type=Float)

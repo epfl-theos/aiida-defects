@@ -9,8 +9,8 @@ from __future__ import absolute_import
 
 from aiida.engine import WorkChain, calcfunction, ToContext, if_, submit
 from aiida import orm
+from qe_tools.constants import hartree_to_ev
 
-from aiida.common.constants import hartree_to_ev
 from aiida_defects.formation_energy.utils import run_pw_calculation
 
 from .utils import get_raw_formation_energy, get_corrected_formation_energy, get_corrected_aligned_formation_energy
@@ -66,6 +66,14 @@ class FormationEnergyWorkchain(WorkChain):
             "pp_scheduler_options",
             valid_type=orm.Dict,
             help="Scheduler options for the pp.x calculations")
+        spec.input(
+            "ph_code",
+            valid_type=orm.Code,
+            help="The ph.x code to use for the calculations")
+        spec.input(
+            "ph_scheduler_options",
+            valid_type=orm.Dict,
+            help="Scheduler options for the ph.x calculations")
 
         spec.outline(
             cls.setup,
@@ -75,6 +83,8 @@ class FormationEnergyWorkchain(WorkChain):
                     cls.check_calcs_gaussian_correction,
                     cls.get_dft_potentials_gaussian_correction,
                     cls.check_dft_potentials_gaussian_correction,
+                    cls.prep_calc_dfpt_calculation,
+                    cls.check_dfpt_calculation,
                     cls.run_gaussian_correction_workchain),
                 if_(cls.is_point_scheme)(
                     cls.prepare_point_correction_workchain,
@@ -108,7 +118,10 @@ class FormationEnergyWorkchain(WorkChain):
             404,
             'ERROR_PP_CALCULATION_FAILED',
             message='A post-processing calculation failed')
-
+        spec.exit_code(
+            405,
+            'ERROR_DFPT_CALCULATION_FAILED',
+            message='DFPT calculation failed')
 
     def setup(self):
         """ 
@@ -151,7 +164,8 @@ class FormationEnergyWorkchain(WorkChain):
 
         from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 
-        self.report("Setting up the Gaussian Countercharge correction workchain")
+        self.report(
+            "Setting up the Gaussian Countercharge correction workchain")
 
         pw_inputs = self.inputs.pw_code.get_builder()
         pw_inputs.pseudos = self.inputs.pseudopotentials
@@ -226,6 +240,56 @@ class FormationEnergyWorkchain(WorkChain):
                         defect_q_calc.exit_status))
             return self.exit_codes.ERROR_DFT_CALCULATION_FAILED
 
+
+    def prep_calc_dfpt_calculation(self):
+        """
+        Run a DFPT calculation to compute the dielectric constant for the pristine material
+        This runs directly on top of the host supercell calculation 
+        """
+
+        ph_inputs = self.inputs.ph_code.get_builder()
+        ph_inputs.parent_folder = self.ctx['calc_host'].outputs.remote_folder
+        
+        # Currently sent to the same density as fore the parent PW calculation
+        ph_inputs.kpoints = self.inputs.kpoints
+        
+        #parameters = self.inputs.ph_parameters.get_dict()
+        parameters = orm.Dict(dict={
+            'INPUTPH':{
+                #"ethr-ph" : 1e-16,
+                'epsil': True,
+                'trans' : False
+            }
+        })
+        ph_inputs.parameters = orm.Dict(dict=parameters)
+
+        # Set the q-points for a Gamma-point calculation
+        qpoints = orm.KpointsData()
+        qpoints.set_kpoints_mesh([1,1,1])
+        ph_inputs.qpoints = qpoints
+
+        ph_inputs.metadata = self.inputs.ph_scheduler_options.get_dict()
+
+        future = self.submit(ph_inputs)
+        self.report(
+            'Launching PH for host structure (PK={})'
+            .format(self.inputs.host_structure.pk, future.pk))
+        self.to_context(**{'calc_dfpt': future})
+
+
+    def check_dfpt_calculation(self):
+        """
+        Check that the DFPT calculation has completed successfully 
+        """
+
+        dfpt_calc = self.ctx['calc_dfpt']
+        if not dfpt_calc.is_finished_ok:
+            self.report(
+                'PH for the host structure has failed with status {}'.
+                format(dfpt_calc.exit_status))
+            return self.exit_codes.ERROR_DFPT_CALCULATION_FAILED
+        
+
     def get_dft_potentials_gaussian_correction(self):
         """
         Obtain the electrostatic potentials from the PWSCF calculations. 
@@ -234,24 +298,26 @@ class FormationEnergyWorkchain(WorkChain):
         # Run a PP calc
         pp_inputs = self.inputs.pp_code.get_builder()
         pp_inputs.metadata = self.inputs.pp_scheduler_options.get_dict()
-        pp_inputs.plot_number = orm.Int(11) # Elctrostatic potential
-        pp_inputs.plot_dimension = orm.Int(3) # 3D
+        pp_inputs.plot_number = orm.Int(11)  # Elctrostatic potential
+        pp_inputs.plot_dimension = orm.Int(3)  # 3D
 
-        pp_inputs.parent_folder = self.ctx['calc_host'].outputs.remote_folder    
+        pp_inputs.parent_folder = self.ctx['calc_host'].outputs.remote_folder
         future = self.submit(pp_inputs)
         self.report(
-            'Launching PP.x for host structure (PK={}) with charge {} (PK={})'
-            .format(self.inputs.host_structure.pk, "0.0", future.pk))
+            'Launching PP.x for host structure (PK={}) with charge {} (PK={})'.
+            format(self.inputs.host_structure.pk, "0.0", future.pk))
         self.to_context(**{'pp_host': future})
 
-        pp_inputs.parent_folder = self.ctx['calc_defect_q0'].outputs.remote_folder    
+        pp_inputs.parent_folder = self.ctx[
+            'calc_defect_q0'].outputs.remote_folder
         future = self.submit(pp_inputs)
         self.report(
             'Launching PP.x for defect structure (PK={}) with charge {} (PK={})'
             .format(self.inputs.defect_structure.pk, "0.0", future.pk))
         self.to_context(**{'pp_defect_q0': future})
 
-        pp_inputs.parent_folder = self.ctx['calc_defect_q'].outputs.remote_folder    
+        pp_inputs.parent_folder = self.ctx[
+            'calc_defect_q'].outputs.remote_folder
         future = self.submit(pp_inputs)
         self.report(
             'Launching PP.x for defect structure (PK={}) with charge {} (PK={})'
@@ -270,8 +336,8 @@ class FormationEnergyWorkchain(WorkChain):
         host_pp = self.ctx['pp_host']
         if not host_pp.is_finished_ok:
             self.report(
-                'Post processing for the host structure has failed with status {}'.
-                format(host_pp.exit_status))
+                'Post processing for the host structure has failed with status {}'
+                .format(host_pp.exit_status))
             return self.exit_codes.ERROR_PP_CALCULATION_FAILED
         else:
             data_array = host_pp.outputs.output_data.get_array('data')
@@ -291,7 +357,6 @@ class FormationEnergyWorkchain(WorkChain):
             v_data = orm.ArrayData()
             v_data.set_array('data', data_array)
             self.ctx.v_defect_q0 = v_data
-            
 
         # Defect (q=q)
         defect_q_pp = self.ctx['pp_defect_q']
@@ -306,6 +371,7 @@ class FormationEnergyWorkchain(WorkChain):
             v_data = orm.ArrayData()
             v_data.set_array('data', data_array)
             self.ctx.v_defect_q = v_data
+
 
 
     def run_gaussian_correction_workchain(self):
@@ -332,7 +398,6 @@ class FormationEnergyWorkchain(WorkChain):
         label = 'correction_workchain'
         self.to_context(**{label: workchain_future})
 
-
     def prepare_point_correction_workchain(self):
         """
         Get the required inputs for the Point Countercharge correction workchain
@@ -340,7 +405,6 @@ class FormationEnergyWorkchain(WorkChain):
         TODO: Finish implementing this interface
         """
         return
-
 
     def run_point_correction_workchain(self):
         """
@@ -358,7 +422,6 @@ class FormationEnergyWorkchain(WorkChain):
         label = 'correction_workchain'
         self.to_context(**{label: workchain_future})
 
-
     def check_correction_workchain(self):
         """
         Check if the potential alignment workchains have finished correctly.
@@ -374,7 +437,6 @@ class FormationEnergyWorkchain(WorkChain):
             self.ctx.total_correction = correction_wc.outputs.total_correction
             self.ctx.electrostatic_correction = correction_wc.outputs.electrostatic_correction
             self.ctx.calculated_alignment = correction_wc.output.total_alignment
-
 
     def compute_formation_energy(self):
         """ 

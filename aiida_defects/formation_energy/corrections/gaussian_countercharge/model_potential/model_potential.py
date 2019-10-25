@@ -10,8 +10,8 @@ from __future__ import absolute_import
 import numpy as np
 
 from aiida import orm
-from aiida.common.constants import hartree_to_ev, bohr_to_ang
 from aiida.engine import WorkChain, calcfunction, while_
+from qe_tools.constants import hartree_to_ev, bohr_to_ang
 
 from .utils import (create_model_structure, get_cell_matrix,
                     get_reciprocal_cell, get_reciprocal_grid, get_charge_model,
