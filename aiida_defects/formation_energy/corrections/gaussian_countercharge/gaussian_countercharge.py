@@ -9,7 +9,6 @@ from __future__ import absolute_import
 
 from aiida.engine import WorkChain, calcfunction, ToContext, while_
 from aiida import orm
-from qe_tools.constants import hartree_to_ev
 
 from aiida_defects.formation_energy.potential_alignment.potential_alignment import PotentialAlignmentWorkchain
 from .model_potential.model_potential import ModelPotentialWorkchain
@@ -27,7 +26,6 @@ class GaussianCounterChargeWorkchain(WorkChain):
     which is itself based on the Freysoldt method 
     (https://doi.org/10.1103/PhysRevLett.102.016402).
     """
-
     @classmethod
     def define(cls, spec):
         super(GaussianCounterChargeWorkchain, cls).define(spec)
@@ -35,38 +33,26 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.input("v_defect_q0", valid_type=orm.ArrayData)
         spec.input("v_defect_q", valid_type=orm.ArrayData)
         spec.input("defect_charge", valid_type=orm.Float)
-        spec.input(
-            "defect_site",
-            valid_type=orm.List,
-            help="Defect site position in crystal coordinates")
+        spec.input("defect_site",
+                   valid_type=orm.List,
+                   help="Defect site position in crystal coordinates")
         spec.input("host_structure", valid_type=orm.StructureData)
-        spec.input(
-            "epsilon",
-            valid_type=orm.Float,
-            help="Dielectric constant for the host material")
-        spec.input(
-            "model_iterations_required",
-            valid_type=orm.Int,
-            default=orm.Int(3))
-        spec.input(
-            "cutoff",
-            valid_type=orm.Float,
-            default=orm.Float(40.),
-            help="Plane wave cutoff for electrostatic model")
+        spec.input("epsilon",
+                   valid_type=orm.Float,
+                   help="Dielectric constant for the host material")
+        spec.input("model_iterations_required",
+                   valid_type=orm.Int,
+                   default=orm.Int(3))
+        spec.input("cutoff",
+                   valid_type=orm.Float,
+                   default=orm.Float(40.),
+                   help="Plane wave cutoff for electrostatic model")
 
-        # spec.input("bulk_structure",valid_type=StructureData)
-        # spec.input("code_pw",valid_type=Str)
-        # spec.input("pseudo_family",valid_type=Str)
-        # spec.input('options', valid_type=ParameterData)
-        # spec.input("settings", valid_type=ParameterData)  
-        # spec.input("kpoints", valid_type=KpointsData)
-        # spec.input('parameters', valid_type=ParameterData)
-        # spec.input('epsilon_r', valid_type=Float)
-        # spec.input('defect_charge', valid_type=Float)
-        #spec.input('defect_position', valid_type=ArrayData)
         spec.outline(
             cls.setup,
-            while_(cls.should_run_model)(cls.compute_model_potential, ),
+            while_(cls.should_run_model)(
+                cls.compute_model_potential, 
+            ),
             cls.check_model_potential_workchains,
             cls.compute_dft_difference_potential,
             cls.submit_alignment_workchains,
@@ -104,21 +90,6 @@ class GaussianCounterChargeWorkchain(WorkChain):
             'ERROR_BAD_INPUT_ITERATIONS_REQUIRED',
             message='The required number of iterations must be at least 3')
 
-        # def run_scf_defect_neutral(self):
-        # """
-        # Run an SCF calculation on the defect supercell with no overall charge
-        # """
-
-        # pw_inputs={
-        #     'code' : Code.get_from_string(str(self.inputs.code_pw)),
-        #     'pseudo_family' : Str(self.inputs.pseudo_family),
-        #     'parameters' : self.inputs.parameters,
-        #     'settings' : self.inputs.settings,
-        #     'options' : self.inputs.options,
-        #     'structure' : self.inputs.defect_structure
-        # }
-
-        # run_pw_calculation(pw_inputs, 0.0, )
 
     def setup(self):
         """
@@ -126,9 +97,9 @@ class GaussianCounterChargeWorkchain(WorkChain):
         """
 
         ## Verification
-        #if self.inputs.model_iterations_required < 3:
-        #    self.report('The requested number of iterations, {}, is too low. At least 3 are required to achieve an #adequate data fit'.format(self.inputs.model_iterations_required.value))
-        #    return self.exit_codes.ERROR_BAD_INPUT_ITERATIONS_REQUIRED
+        if self.inputs.model_iterations_required < 3:
+           self.report('The requested number of iterations, {}, is too low. At least 3 are required to achieve an #adequate data fit'.format(self.inputs.model_iterations_required.value))
+           return self.exit_codes.ERROR_BAD_INPUT_ITERATIONS_REQUIRED
 
         # Track iteration number
         self.ctx.model_iteration = orm.Int(0)
@@ -292,7 +263,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             orm.Dict(dict=linear_dimensions),
             orm.Dict(dict=self.ctx.model_energies))
         self.report("The isolated model energy is {} eV".format(
-            self.ctx.isolated_energy.value * hartree_to_ev))
+            self.ctx.isolated_energy.value))
 
     def get_model_corrections(self):
         """
@@ -319,16 +290,16 @@ class GaussianCounterChargeWorkchain(WorkChain):
                                                 total_alignment)
 
         self.report('The computed total alignment is {} eV'.format(
-            total_alignment.value * hartree_to_ev))
+            total_alignment.value))
         self.out('total_alignment', total_alignment)
 
         self.report('The computed electrostatic correction is {} eV'.format(
-            electrostatic_correction.value * hartree_to_ev))
+            electrostatic_correction.value))
         self.out('electrostatic_correction', electrostatic_correction)
 
         self.report(
             'The computed total correction, including potential alignments, is {} eV'
-            .format(total_correction.value * hartree_to_ev))
+            .format(total_correction.value))
         self.out('total_correction', total_correction)
 
         # Store additional outputs

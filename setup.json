@@ -1,6 +1,6 @@
 {
     "name": "aiida-defects",
-    "version": "0.2.0",
+    "version": "0.6.0",
     "author": "Conrad Johnston, Chiara Ricca",
     "author_email": "conrad.s.johnston@googlemail.com",
     "url": "https://github.com/ConradJohnston/aiida-defects/",
@@ -15,7 +15,7 @@
     ],
     "entry_points": {
         "aiida.workflows": [
-            "defects.formation_energy = aiida_defects.workflows.defect_workchain:DefectWorkChain",
+            "defects.formation_energy.qe = aiida_defects.formation_energy.formation_energy_qe:FormationEnergyWorkchainQE",
             "defects.formation_energy.corrections.gaussian_countercharge = aiida_defects.formation_energy.corrections.gaussian_countercharge.gaussian_countercharge:GaussianCounterChargeWorkchain",
             "defects.formation_energy.corrections.gaussian_countercharge.model_potential = aiida_defects.formation_energy.corrections.gaussian_countercharge.model_potential.model_potential:ModelPotentialWorkchain",
             "defects.formation_energy.corrections.point_countercharge = aiida_defects.formation_energy.corrections.point_countercharge.point_countercharge:PointCounterChargeWorkchain",
@@ -36,11 +36,9 @@
             "pre-commit",
             "pylint==1.9.4; python_version<'3.0'",
             "pylint==2.2.2; python_version>='3.0'",
-            "yapf==0.26.0",
             "prospector==1.1.5",
             "pep8-naming==0.4.1",
             "modernize==0.7"
-        
         ], 
         "docs": [
             "Sphinx", 

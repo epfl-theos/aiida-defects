@@ -11,7 +11,7 @@ import numpy as np
 
 from aiida import orm
 from aiida.engine import WorkChain, calcfunction, while_
-from qe_tools.constants import hartree_to_ev, bohr_to_ang
+from qe_tools.constants import bohr_to_ang
 
 from .utils import (create_model_structure, get_cell_matrix,
                     get_reciprocal_cell, get_reciprocal_grid, get_charge_model,
@@ -22,22 +22,19 @@ class ModelPotentialWorkchain(WorkChain):
     """
     Workchain to compute the model electrostatic potential
     """
-
     @classmethod
     def define(cls, spec):
         super(ModelPotentialWorkchain, cls).define(spec)
         spec.input('defect_charge', valid_type=orm.Float)
         spec.input('scale_factor', valid_type=orm.Int)
         spec.input('host_structure', valid_type=orm.StructureData)
-        spec.input(
-            'defect_site',
-            valid_type=orm.List,
-            help="Defect site position in crystal coordinates")
+        spec.input('defect_site',
+                   valid_type=orm.List,
+                   help="Defect site position in crystal coordinates")
         spec.input('cutoff', valid_type=orm.Float, default=orm.Float(40.))
-        spec.input(
-            'epsilon',
-            valid_type=orm.Float,
-            help="Dielectric constant of the host material")
+        spec.input('epsilon',
+                   valid_type=orm.Float,
+                   help="Dielectric constant of the host material")
         spec.outline(
             cls.setup,
             cls.get_model_structure,
@@ -49,8 +46,9 @@ class ModelPotentialWorkchain(WorkChain):
         #spec.expose_outputs(PwBaseWorkChain, exclude=('output_structure',))
         spec.output('model_energy', valid_type=orm.Float, required=True)
         spec.output('model_potential', valid_type=orm.ArrayData, required=True)
-        spec.output(
-            'model_structure', valid_type=orm.StructureData, required=True)
+        spec.output('model_structure',
+                    valid_type=orm.StructureData,
+                    required=True)
 
         # Exit codes
 
@@ -126,7 +124,7 @@ class ModelPotentialWorkchain(WorkChain):
             limits=self.ctx.limits)
 
         self.report("Calculated model energy: {} eV".format(
-            self.ctx.model_energy.value * hartree_to_ev))
+            self.ctx.model_energy.value))
 
     def results(self):
         """

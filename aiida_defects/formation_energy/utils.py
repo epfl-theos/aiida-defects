@@ -46,12 +46,12 @@ def run_pw_calculation(pw_inputs, structure, charge):
 
 @calcfunction
 def get_raw_formation_energy(defect_energy, host_energy, chemical_potential,
-                             charge, fermi_energy):
+                             charge, fermi_energy, valence_band_maximum):
     """
     Compute the formation energy without correction
     """
     e_f_uncorrected = defect_energy - host_energy - chemical_potential + (
-        charge * fermi_energy)
+        charge * (valence_band_maximum + fermi_energy))
     return e_f_uncorrected
 
 

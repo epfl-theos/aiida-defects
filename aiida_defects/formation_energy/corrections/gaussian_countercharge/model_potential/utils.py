@@ -12,6 +12,8 @@ from scipy.optimize import curve_fit
 
 from aiida import orm
 from aiida.engine import calcfunction
+from qe_tools.constants import hartree_to_ev
+
 
 
 @calcfunction
@@ -289,5 +291,5 @@ def get_energy(potential, charge_density, dimensions, limits):
     kk = np.linspace(0., limits[2], dimensions[2])
 
     energy = np.real(0.5 * np.trapz(
-        np.trapz(np.trapz(charge_density * potential, ii), jj), kk))
+        np.trapz(np.trapz(charge_density * potential, ii), jj), kk)) * hartree_to_ev
     return orm.Float(energy)
