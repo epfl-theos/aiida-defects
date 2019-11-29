@@ -26,9 +26,9 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
     @classmethod
     def define(cls, spec):
         super(FormationEnergyWorkchainQE, cls).define(spec)
-        
-        # DFT and DFPT calculations with QuantumESPRESSO are handled with different codes, so here 
-        # we keep track of things with two separate namespaces. An additional code, and an additional 
+
+        # DFT and DFPT calculations with QuantumESPRESSO are handled with different codes, so here
+        # we keep track of things with two separate namespaces. An additional code, and an additional
         # namespace, is used for postprocessing
         spec.input_namespace('qe.dft.supercell',
             help="Inputs for DFT calculations on supercells")
@@ -47,11 +47,11 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         spec.input("qe.dft.supercell.kpoints",
             valid_type=orm.KpointsData,
             help="The k-point grid to use for the calculations")
-        spec.input("qe.dft.supercell.parameters", 
-            valid_type=orm.Dict, 
+        spec.input("qe.dft.supercell.parameters",
+            valid_type=orm.Dict,
             help="Parameters for the PWSCF calcuations. Some will be set automatically")
-        spec.input("qe.dft.supercell.scheduler_options", 
-            valid_type=orm.Dict, 
+        spec.input("qe.dft.supercell.scheduler_options",
+            valid_type=orm.Dict,
             help="Scheduler options for the PW.x calculations")
         spec.input_namespace("qe.dft.supercell.pseudopotentials",
             valid_type=orm.UpfData,
@@ -66,11 +66,11 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         spec.input("qe.dft.unitcell.kpoints",
             valid_type=orm.KpointsData,
             help="The k-point grid to use for the calculations")
-        spec.input("qe.dft.unitcell.parameters", 
-            valid_type=orm.Dict, 
+        spec.input("qe.dft.unitcell.parameters",
+            valid_type=orm.Dict,
             help="Parameters for the PWSCF calcuations. Some will be set automatically")
-        spec.input("qe.dft.unitcell.scheduler_options", 
-            valid_type=orm.Dict, 
+        spec.input("qe.dft.unitcell.scheduler_options",
+            valid_type=orm.Dict,
             help="Scheduler options for the PW.x calculations")
         spec.input_namespace("qe.dft.unitcell.pseudopotentials",
             valid_type=orm.UpfData,
@@ -104,8 +104,8 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                     if_(cls.host_unitcell_provided)(
                         cls.prep_hostcell_calc_for_dfpt,
                         cls.check_hostcell_calc_for_dfpt,
-                    ),   
-                    cls.prep_calc_dfpt_calculation, 
+                    ),
+                    cls.prep_calc_dfpt_calculation,
                     cls.check_dfpt_calculation,
                     cls.run_gaussian_correction_workchain),
                 if_(cls.is_point_scheme)(
@@ -113,14 +113,14 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                     #cls.prepare_point_correction_workchain,
                     #cls.run_point_correction_workchain),
                 ),
-                cls.check_correction_workchain), 
+                cls.check_correction_workchain),
             cls.compute_formation_energy
         )
 
     def prep_dft_calcs_gaussian_correction(self):
         """
         Get the required inputs for the Gaussian Countercharge correction workchain.
-        This method runs the required calculations to generate the energies and potentials 
+        This method runs the required calculations to generate the energies and potentials
         for the Gaussian scheme.
         """
 
@@ -133,11 +133,11 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
 
         parameters = self.inputs.qe.dft.supercell.parameters.get_dict()
 
-        # We set 'tot_charge' later so throw an error if the user tries to set it to avoid 
+        # We set 'tot_charge' later so throw an error if the user tries to set it to avoid
         # any ambiguity or unseen modification of user input
         if 'tot_charge' in parameters['SYSTEM']:
             self.report('You cannot set the "tot_charge" PW.x parameter explicitly')
-            return self.exit_codes.ERROR_PARAMETER_OVERRIDE 
+            return self.exit_codes.ERROR_PARAMETER_OVERRIDE
 
         # Host structure
         pw_inputs.structure = self.inputs.host_structure
@@ -212,18 +212,18 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
 
     def prep_hostcell_calc_for_dfpt(self):
         """
-        Run a DFT calculation on the structure to be used for the computation of the 
+        Run a DFT calculation on the structure to be used for the computation of the
         dielectric constant
         """
 
         self.report("An alternative unit cell has been requested")
 
-        # Another code may be desirable - N.B. in AiiDA a code refers to a specific 
+        # Another code may be desirable - N.B. in AiiDA a code refers to a specific
         # executable on a specific computer. As the PH calculation may have to be run on
-        # an HPC cluster, the PW calculation must be run on the same machine and so this 
+        # an HPC cluster, the PW calculation must be run on the same machine and so this
         # may necessitate that a different code is used than that for the supercell calculations.
         pw_inputs = self.inputs.qe.dft.unitcell.code.get_builder()
-        
+
         # These are not necessarily the same as for the other DFT calculations
         pw_inputs.pseudos = self.inputs.qe.dft.unitcell.pseudopotentials
         pw_inputs.kpoints = self.inputs.qe.dft.unitcell.kpoints
@@ -239,13 +239,13 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             .format(self.inputs.host_structure.pk, future.pk)
         )
         self.to_context(**{'calc_host_unitcell': future})
-        
+
         return
 
     def check_hostcell_calc_for_dfpt(self):
         """
-        Check if the DFT calculation to be used for the computation of the 
-        dielectric constant has completed successfully. 
+        Check if the DFT calculation to be used for the computation of the
+        dielectric constant has completed successfully.
         """
 
         host_unitcell_calc = self.ctx['calc_host_unitcell']
@@ -261,8 +261,8 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         """
 
         ph_inputs = self.inputs.qe.dfpt.code.get_builder()
-    
-        # Setting up the calculation depends on whether the parent SCF calculation is either 
+
+        # Setting up the calculation depends on whether the parent SCF calculation is either
         # the host supercell or an alternative host unitcell
         if self.inputs.host_unitcell:
             ph_inputs.parent_folder = self.ctx['calc_host_unitcell'].outputs.remote_folder
@@ -278,8 +278,8 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         })
         ph_inputs.parameters = parameters
 
-        # Set the q-points for a Gamma-point calculation 
-        # N.B. Setting a 1x1x1 mesh is not equivalent as this will trigger a full phonon dispersion calculation 
+        # Set the q-points for a Gamma-point calculation
+        # N.B. Setting a 1x1x1 mesh is not equivalent as this will trigger a full phonon dispersion calculation
         qpoints = orm.KpointsData()
         if self.inputs.host_unitcell:
             qpoints.set_cell_from_structure(structuredata=self.ctx['calc_host_unitcell'].inputs.structure)
@@ -299,10 +299,10 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
     def check_dfpt_calculation(self):
 
         """
-        Check that the DFPT calculation has completed successfully 
+        Check that the DFPT calculation has completed successfully
         """
         dfpt_calc = self.ctx['calc_dfpt']
-        
+
         if dfpt_calc.is_finished_ok:
             epsilion_tensor = np.array(dfpt_calc.outputs.output_parameters.get_dict()['dielectric_constant'])
             self.ctx.epsilon = orm.Float(np.trace(epsilion_tensor/3.))
@@ -315,7 +315,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
 
     def get_dft_potentials_gaussian_correction(self):
         """
-        Obtain the electrostatic potentials from the PWSCF calculations. 
+        Obtain the electrostatic potentials from the PWSCF calculations.
         """
 
         # User inputs

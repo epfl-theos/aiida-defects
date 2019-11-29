@@ -145,7 +145,7 @@ def get_cell_matrix(structure):
         3x3 cell matrix array in units of Bohr
 
     """
-    from aiida.common.constants import bohr_to_ang
+    from qe_tools.constants import bohr_to_ang
     cell_matrix = np.array(structure.cell) / bohr_to_ang  # Angstrom to Bohr
     return cell_matrix
 

@@ -35,11 +35,11 @@ def get_total_alignment(alignment_dft_model, alignment_q0_host, charge):
     Parameters
     ----------
     alignment_dft_model: orm.Float
-        The correction energy derived from the alignment of the DFT difference 
+        The correction energy derived from the alignment of the DFT difference
         potential and the model potential
     alignment_q0_host: orm.Float
-        The correction energy derived from the alignment of the defect 
-        potential in the q=0 charge state and the potential of the pristine 
+        The correction energy derived from the alignment of the defect
+        potential in the q=0 charge state and the potential of the pristine
         host structure
     charge: orm.Float
         The charge state of the defect
@@ -48,7 +48,7 @@ def get_total_alignment(alignment_dft_model, alignment_q0_host, charge):
     -------
     total_alignment
         The calculated total potential alignment
-    
+
     """
 
     total_alignment = (charge * alignment_dft_model) + (
@@ -67,15 +67,15 @@ def get_total_correction(model_correction, total_alignment):
     model_correction: orm.Float
         The correction energy derived from the electrostatic model
     total_alignment: orm.Float
-        The correction energy derived from the alignment of the DFT difference 
-        potential and the model potential, and alignment of the defect potential 
+        The correction energy derived from the alignment of the DFT difference
+        potential and the model potential, and alignment of the defect potential
         in the q=0 charge state and the potential of the pristine host structure
 
     Returns
     -------
     total_correction
         The calculated correction, including potential alignment
-    
+
     """
 
     total_correction = model_correction - total_alignment
@@ -101,7 +101,7 @@ def fit_energies(dimensions_dict, energies_dict):
         Function to fit:
         E = a*Omega^(-3) + b*Omega^(-1) + c
         Where:
-            Omega is the volume of the cell 
+            Omega is the volume of the cell
             a,b,c are parameters to be fitted
 
         Parameters
@@ -117,13 +117,13 @@ def fit_energies(dimensions_dict, energies_dict):
     energies_dict = energies_dict.get_dict()
 
     # Sort these scale factors so that they are in ascending order
-    keys_list = dimensions_dict.keys()
-    keys_list.sort()
+    #keys_list = dimensions_dict.keys()
+    #keys_list.sort()
 
     linear_dim_list = []
     energy_list = []
     # Unpack the dictionaries:
-    for key in keys_list:
+    for key in sorted(dimensions_dict.keys()):
         linear_dim_list.append(dimensions_dict[key])
         energy_list.append(energies_dict[key])
 
