@@ -20,10 +20,10 @@ from .utils import fit_energies, calc_correction
 
 class GaussianCounterChargeWorkchain(WorkChain):
     """
-    Compute the electrostatic correction for charged defects according to the 
+    Compute the electrostatic correction for charged defects according to the
     Guassian counter-charge method.
-    Here we implement the Komsa-Pasquarello method (https://doi.org/10.1103/PhysRevLett.110.095505), 
-    which is itself based on the Freysoldt method 
+    Here we implement the Komsa-Pasquarello method (https://doi.org/10.1103/PhysRevLett.110.095505),
+    which is itself based on the Freysoldt method
     (https://doi.org/10.1103/PhysRevLett.102.016402).
     """
     @classmethod
@@ -51,7 +51,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.outline(
             cls.setup,
             while_(cls.should_run_model)(
-                cls.compute_model_potential, 
+                cls.compute_model_potential,
             ),
             cls.check_model_potential_workchains,
             cls.compute_dft_difference_potential,
@@ -134,7 +134,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
     def should_run_model(self):
         """
-        Return whether a model workchain should be run, which is dependant on the number of model energies computed 
+        Return whether a model workchain should be run, which is dependant on the number of model energies computed
         with respect to to the total number of model energies needed.
         """
         return self.ctx.model_iteration < self.inputs.model_iterations_required
@@ -166,7 +166,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         Check if the model potential alignment workchains have finished correctly.
         If yes, assign the outputs to the context
         """
-        for ii in range(self.inputs.model_iterations_required):
+        for ii in range(self.inputs.model_iterations_required.value):
             scale_factor = ii + 1
             label = 'model_potential_scale_factor_{}'.format(scale_factor)
             model_workchain = self.ctx[label]

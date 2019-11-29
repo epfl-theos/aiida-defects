@@ -43,7 +43,7 @@ def get_cell_matrix(structure):
         3x3 cell matrix array in units of Bohr
 
     """
-    from aiida.common.constants import bohr_to_ang
+    from qe_tools.constants import bohr_to_ang
     cell_matrix = np.array(structure.cell) / bohr_to_ang  # Angstrom to Bohr
     return cell_matrix
 
@@ -71,7 +71,7 @@ def get_reciprocal_cell(cell_matrix):
 
 
 def get_reciprocal_grid(cell_matrix, cutoff):
-    """ 
+    """
     Prepare a reciprocal space grid to achieve a given planewave energy cutoff
     cutoff (Ry)
 
@@ -208,7 +208,7 @@ def get_fft(grid):
 
 def get_inverse_fft(fft_grid):
     """
-    Get the inverse FFT of an FFT grid 
+    Get the inverse FFT of an FFT grid
     """
     return np.fft.ifftn(np.fft.ifftshift(fft_grid))
 
