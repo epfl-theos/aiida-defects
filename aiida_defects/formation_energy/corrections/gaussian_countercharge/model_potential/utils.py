@@ -246,8 +246,8 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
     dimensions = dimensions // 2  #floor division
 
     ijk_array = np.mgrid[-dimensions[0]:dimensions[0] +
-                         1, -dimensions[0]:dimensions[1] +
-                         1, -dimensions[0]:dimensions[2] + 1].T
+                         1, -dimensions[1]:dimensions[1] +
+                         1, -dimensions[2]:dimensions[2] + 1].T
 
     # Get G vectors
     G_array = np.dot(
