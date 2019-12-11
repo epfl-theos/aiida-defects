@@ -256,7 +256,7 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
          ))  # To do: check why we use a grid that goes way past the recip cell
 
     # Calculate the square modulus
-    G_sqmod_array = np.linalg.norm(G_array, axis=3)**2
+    G_sqmod_array = (np.linalg.norm(G_array, axis=3)**2).T
 
     # Get the reciprocal space charge density
     charge_density_g = get_fft(charge_density)
@@ -266,7 +266,7 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
         charge_density_g, G_sqmod_array, where=G_sqmod_array != 0.0)
     V_model_g = v_model * 4. * np.pi / epsilon
 
-    V_model_g[dimensions + 1, dimensions + 1, dimensions + 1] = 0.0
+    V_model_g[dimensions[0] + 1, dimensions[1] + 1, dimensions[2] + 1] = 0.0
 
     # Get the model potential in real space
     V_model_r = get_inverse_fft(V_model_g)
