@@ -128,7 +128,7 @@ def get_charge_model(limits,
     i = np.linspace(0, limits[0], dimensions[0])
     j = np.linspace(0, limits[1], dimensions[1])
     k = np.linspace(0, limits[2], dimensions[2])
-    grid = np.meshgrid(i, j, k)
+    grid = np.meshgrid(i, j, k, indexing='ij')
 
     # Get the gaussian at the defect position
     g = get_gaussian_3d(grid, defect_position, sigma)
@@ -289,7 +289,6 @@ def get_energy(potential, charge_density, dimensions, limits):
     ii = np.linspace(0., limits[0], dimensions[0])
     jj = np.linspace(0., limits[1], dimensions[1])
     kk = np.linspace(0., limits[2], dimensions[2])
-
-    energy = np.real(0.5 * np.trapz(
-        np.trapz(np.trapz(charge_density * potential, ii), jj), kk)) * hartree_to_ev
+    
+    energy = np.real(0.5 * np.trapz(np.trapz(np.trapz(charge_density * potential, ii, axis=0), jj, axis=0), kk, axis=0)) * hartree_to_ev
     return orm.Float(energy)
