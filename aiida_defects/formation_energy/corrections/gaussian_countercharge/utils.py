@@ -10,6 +10,9 @@ from __future__ import absolute_import
 import numpy as np
 from aiida import orm
 from aiida.engine import calcfunction
+
+from qe_tools.constants import hartree_to_ev, bohr_to_ang
+
 """
 Utility functions for the gaussian countercharge workchain
 """
@@ -94,7 +97,7 @@ def fit_energies(dimensions_dict, energies_dict):
         AiiDA dictionary of the form: structure : energy
     """
 
-    from scipy.optimize import curve_fit
+    from scipy.optimize import curve_fit    
 
     def fitting_func(x, a, b, c):
         """
@@ -153,3 +156,74 @@ def calc_correction(isolated_energy, model_energy):
     correction_energy = isolated_energy - model_energy
 
     return orm.Float(correction_energy)
+
+
+@calcfunction
+def get_charge_model_fit(rho_host, rho_defect_q, host_structure):
+    """
+    Fit the charge model to the defect data
+
+    Parameters
+    ----------
+    model_correction: orm.Float
+        The correction energy derived from the electrostatic model
+    total_alignment: orm.Float
+        The correction energy derived from the alignment of the DFT difference
+        potential and the model potential, and alignment of the defect potential
+        in the q=0 charge state and the potential of the pristine host structure
+
+    Returns
+    -------
+    total_correction
+        The calculated correction, including potential alignment
+
+    """
+
+    from scipy.optimize import curve_fit
+    from .model_potential.utils import generate_charge_model, get_xyz_coords, get_cell_matrix
+
+    # Get the cell matrix
+    cell_matrix = get_cell_matrix(host_structure)
+
+    # Compute the difference in charge density between the host and defect systems
+    rho_defect_q_data = rho_defect_q.get_array(rho_defect_q.get_arraynames()[0])
+    rho_host_data = rho_host.get_array(rho_host.get_arraynames()[0])
+
+    # Charge density from QE is in e/cubic-bohr, so convert if necessary 
+    # TODO: Check if the CUBE file format is strictly Bohr or if this is a QE thing
+    #rho_diff = (rho_host_data - rho_defect_q_data)/(bohr_to_ang**3)  
+    rho_diff = rho_host_data - rho_defect_q_data 
+
+    # Detect the centre of the charge in the data 
+    max_pos_mat = np.array(np.unravel_index(rho_diff.argmax(), rho_diff.shape)) # matrix coords
+    max_pos_ijk = (max_pos_mat*1.)/(np.array(rho_diff.shape)-1) # Compute crystal coords
+    max_i = max_pos_ijk[0]
+    max_j = max_pos_ijk[1]
+    max_k = max_pos_ijk[2]
+
+    # Generate cartesian coordinates for a grid of the same size as the charge data
+    xyz_coords = get_xyz_coords(cell_matrix, rho_diff.shape)
+
+    # Set up some safe parameters for the fitting
+    guesses = [max_i, max_j, max_k, 1., 1., 1., 0., 0., 0.]
+    bounds = (
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.,],
+        [1., 1., 1., np.inf, np.inf, np.inf, np.inf, np.inf, np.inf])
+    peak_charge = rho_diff.max()
+
+    # Do the fitting
+    fit, covar_fit = curve_fit(
+        generate_charge_model(cell_matrix, peak_charge), 
+        xyz_coords, 
+        rho_diff.ravel(), 
+        p0=guesses, 
+        bounds=bounds)
+
+    fitting_results = {}
+
+    fitting_results['fit'] = fit.tolist()
+    fitting_results['peak_charge'] = peak_charge
+
+    return orm.Dict(dict=fitting_results)
+
+
