@@ -91,24 +91,25 @@ class FormationEnergyWorkchainBase(WorkChain):
         )
 
         # Error codes
-        spec.exit_code( 401, "ERROR_INVALID_CORRECTION",
+        spec.exit_code(201, "ERROR_INVALID_CORRECTION",
             message="The requested correction scheme is not recognised",
         )
-        spec.exit_code(402, "ERROR_CORRECTION_WORKCHAIN_FAILED",
-            message="The correction scheme sub-workchain failed",
-        )
-        spec.exit_code(403, "ERROR_DFT_CALCULATION_FAILED", 
-            message="DFT calculation failed",
-        )
-        spec.exit_code(404, "ERROR_PP_CALCULATION_FAILED",
-            message="A post-processing calculation failed",
-        )
-        spec.exit_code(405, "ERROR_DFPT_CALCULATION_FAILED", 
-            message="DFPT calculation failed"
-        )
-        spec.exit_code(500, "ERROR_PARAMETER_OVERRIDE",
+        spec.exit_code(202, "ERROR_PARAMETER_OVERRIDE",
             message="Input parameter dictionary key cannot be set explicitly",
         )
+        spec.exit_code(301, "ERROR_CORRECTION_WORKCHAIN_FAILED",
+            message="The correction scheme sub-workchain failed",
+        )
+        spec.exit_code(302, "ERROR_DFT_CALCULATION_FAILED", 
+            message="DFT calculation failed",
+        )
+        spec.exit_code(303, "ERROR_PP_CALCULATION_FAILED",
+            message="A post-processing calculation failed",
+        )
+        spec.exit_code(304, "ERROR_DFPT_CALCULATION_FAILED", 
+            message="DFPT calculation failed"
+        )
+
         spec.exit_code(999, "ERROR_NOT_IMPLEMENTED",
             message="The requested method is not yet implemented",
         )

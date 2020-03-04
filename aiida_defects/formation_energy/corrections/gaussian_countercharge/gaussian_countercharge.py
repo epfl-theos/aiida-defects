@@ -30,16 +30,16 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         spec.input("host_structure",
             valid_type=orm.StructureData,
-            help="The structure of the host system")
+            help="The structure of the host system.")
         spec.input("defect_charge",
             valid_type=orm.Float,
-            help="The target defect charge state")
+            help="The target defect charge state.")
         spec.input("defect_site",
             valid_type=orm.List,
-            help="Defect site position in crystal coordinates")
+            help="Defect site position in crystal coordinates.")
         spec.input("epsilon",
             valid_type=orm.Float,
-            help="Dielectric constant for the host material")
+            help="Dielectric constant for the host material.")
         spec.input("model_iterations_required",
             valid_type=orm.Int,
             default=orm.Int(3),
@@ -47,22 +47,30 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.input("cutoff",
             valid_type=orm.Float,
             default=orm.Float(40.),
-            help="Plane wave cutoff for electrostatic model")
+            help="Plane wave cutoff for electrostatic model.")
         spec.input("v_host",
             valid_type=orm.ArrayData,
-            help="The electrostatic potential of the host system")
+            help="The electrostatic potential of the host system.")
         spec.input("v_defect_q0",
             valid_type=orm.ArrayData,
-            help="The electrostatic potential of the defect system in the 0 charge state")
+            help="The electrostatic potential of the defect system in the 0 charge state.")
         spec.input("v_defect_q",
             valid_type=orm.ArrayData,
-            help="The electrostatic potential of the defect system in the target charge state")
+            help="The electrostatic potential of the defect system in the target charge state.")
         spec.input("rho_host",
             valid_type=orm.ArrayData,
-            help="The charge density of the host system")
+            help="The charge density of the host system.")
         spec.input("rho_defect_q",
             valid_type=orm.ArrayData,
-            help="The charge density of the defect system in the target charge state")
+            help="The charge density of the defect system in the target charge state.")
+        spec.input("charge_fit_tolerance",
+            valid_type=orm.Float,
+            help="Permissable error for any fitted charge model parameter.",
+            default=orm.Float(1.0e-3))
+        spec.input("strict_fit",
+            valid_type=orm.Bool,
+            help="When true, exit the workchain if a fitting parameter is outside the specified tolerance.",
+            default=orm.Bool(True))
 
         spec.outline(
             cls.setup,
@@ -86,21 +94,24 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.output('electrostatic_correction', valid_type=orm.Float)
         # spec.output('isolated_energy', valid_type=orm.Float, required=True) # Not sure if anyone would use this
         # spec.output('model_correction_energies', valid_type=orm.Dict, required=True) # Again, not sure if useful
-        spec.exit_code(401,
+        spec.exit_code(201,
             'ERROR_INVALID_INPUT_ARRAY',
             message='the input ArrayData object can only contain one array')
-        spec.exit_code(409,
-            'ERROR_SUB_PROCESS_FAILED_ALIGNMENT',
-            message='the electrostatic potentials could not be aligned')
-        spec.exit_code(413,
-            'ERROR_SUB_PROCESS_FAILED_MODEL_POTENTIAL',
-            message='The model electrostatic potential could not be computed')
-        spec.exit_code(410,
-            'ERROR_SUB_PROCESS_FAILED_FINAL_SCF',
-            message='the final scf PwBaseWorkChain sub process failed')
-        spec.exit_code(411,
+        spec.exit_code(202,
             'ERROR_BAD_INPUT_ITERATIONS_REQUIRED',
             message='The required number of iterations must be at least 3')
+        spec.exit_code(301,
+            'ERROR_SUB_PROCESS_FAILED_ALIGNMENT',
+            message='the electrostatic potentials could not be aligned')
+        spec.exit_code(302,
+            'ERROR_SUB_PROCESS_FAILED_MODEL_POTENTIAL',
+            message='The model electrostatic potential could not be computed')
+        spec.exit_code(303,
+            'ERROR_SUB_PROCESS_FAILED_FINAL_SCF',
+            message='the final scf PwBaseWorkChain sub process failed')
+        spec.exit_code(304,
+            'ERROR_BAD_CHARGE_FIT',
+            message='the mode fit to charge density is extremely poor')
 
 
     def setup(self):
@@ -141,6 +152,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         # Dict to store correction energies
         self.ctx.model_correction_energies = {}
+
         return
 
 
@@ -156,6 +168,13 @@ class GaussianCounterChargeWorkchain(WorkChain):
         
         self.ctx.fitted_params = orm.List(list=fit['fit'])
         self.ctx.peak_charge = orm.Float(fit['peak_charge'])
+
+        
+        for parameter in fit['error']:
+            if parameter > self.inputs.charge_fit_tolerance:
+                self.logger.warning("Charge fitting parameter worse than allowed tolerance")
+                if self.inputs.strict_fit:
+                    return self.exit_codes.ERROR_BAD_CHARGE_FIT 
 
 
     def should_run_model(self):

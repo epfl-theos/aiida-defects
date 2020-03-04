@@ -219,10 +219,14 @@ def get_charge_model_fit(rho_host, rho_defect_q, host_structure):
         p0=guesses, 
         bounds=bounds)
 
+    # Compute the one standard deviation errors from the 9x9 covariance array
+    fit_error = np.sqrt(np.diag(covar_fit))
+
     fitting_results = {}
 
     fitting_results['fit'] = fit.tolist()
     fitting_results['peak_charge'] = peak_charge
+    fitting_results['error'] = fit_error.tolist()
 
     return orm.Dict(dict=fitting_results)
 
