@@ -108,7 +108,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                     cls.get_dft_potentials_gaussian_correction,
                     cls.check_dft_potentials_gaussian_correction,
                     cls.get_kohn_sham_potentials,
-                    cls.get_charge_density,
+                    #cls.get_charge_density,
                     if_(cls.if_run_dfpt)(
                         cls.prep_hostcell_calc_for_dfpt,
                         cls.check_hostcell_calc_for_dfpt,
