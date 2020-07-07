@@ -325,8 +325,15 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         pp_inputs.metadata = self.inputs.qe.pp.scheduler_options.get_dict()
 
         # Fixed settings
-        pp_inputs.plot_number = orm.Int(11)  # Elctrostatic potential
-        pp_inputs.plot_dimension = orm.Int(3)  # 3D
+        params = orm.Dict(dict={
+            'INPUTPP': {
+                'plot_num': 11,   # Electrostatic potential
+            },
+            'PLOT': {
+                'iflag' : 3       # 3D
+            }
+        })
+        pp_inputs.parameters = params
 
         pp_inputs.parent_folder = self.ctx['calc_host'].outputs.remote_folder
         future = self.submit(pp_inputs)
@@ -377,7 +384,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # Defect (q=0)
         defect_q0_pp = self.ctx['pp_v_defect_q0']
         if defect_q0_pp.is_finished_ok:
-            data_array = host_pp.outputs.output_data.get_array('data')
+            data_array = defect_q0_pp.outputs.output_data.get_array('data')
             v_data = orm.ArrayData()
             v_data.set_array('data', data_array)
             self.ctx.v_defect_q0 = v_data
@@ -390,7 +397,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # Defect (q=q)
         defect_q_pp = self.ctx['pp_v_defect_q']
         if defect_q_pp.is_finished_ok:
-            data_array = host_pp.outputs.output_data.get_array('data')
+            data_array = defect_q_pp.outputs.output_data.get_array('data')
             v_data = orm.ArrayData()
             v_data.set_array('data', data_array)
             self.ctx.v_defect_q = v_data
@@ -412,8 +419,16 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         pp_inputs.metadata = self.inputs.qe.pp.scheduler_options.get_dict()
 
         # Fixed settings
-        pp_inputs.plot_number = orm.Int(1)  # Charge density 
-        pp_inputs.plot_dimension = orm.Int(3)  # 3D
+        # Fixed settings
+        params = orm.Dict(dict={
+            'INPUTPP': {
+                'plot_num': 0,   # Electron density
+            },
+            'PLOT': {
+                'iflag' : 3       # 3D
+            }
+        })
+        pp_inputs.parameters = params
 
         pp_inputs.parent_folder = self.ctx['calc_host'].outputs.remote_folder
         future = self.submit(pp_inputs)
@@ -456,7 +471,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # Defect (q=q)
         defect_q_pp = self.ctx['pp_rho_defect_q']
         if defect_q_pp.is_finished_ok:
-            data_array = host_pp.outputs.output_data.get_array('data')
+            data_array = defect_q_pp.outputs.output_data.get_array('data')
             rho_data = orm.ArrayData()
             rho_data.set_array('data', data_array)
             self.ctx.rho_defect_q = rho_data

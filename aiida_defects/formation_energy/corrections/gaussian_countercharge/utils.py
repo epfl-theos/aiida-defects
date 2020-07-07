@@ -11,7 +11,7 @@ import numpy as np
 from aiida import orm
 from aiida.engine import calcfunction
 
-from qe_tools.constants import hartree_to_ev, bohr_to_ang
+from qe_tools.constants import bohr_to_ang
 
 """
 Utility functions for the gaussian countercharge workchain
@@ -54,7 +54,7 @@ def get_total_alignment(alignment_dft_model, alignment_q0_host, charge):
 
     """
 
-    total_alignment = (charge * alignment_dft_model) + (
+    total_alignment = -1.0*(charge * alignment_dft_model) + (
         charge * alignment_q0_host)
 
     return total_alignment

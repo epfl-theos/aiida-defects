@@ -16,7 +16,6 @@ from .utils import (
     get_corrected_aligned_formation_energy,
 )
 
-
 class FormationEnergyWorkchainBase(WorkChain):
     """
     The base class to compute the formation energy for a given defect, containing the 
@@ -109,7 +108,6 @@ class FormationEnergyWorkchainBase(WorkChain):
         spec.exit_code(304, "ERROR_DFPT_CALCULATION_FAILED", 
             message="DFPT calculation failed"
         )
-
         spec.exit_code(999, "ERROR_NOT_IMPLEMENTED",
             message="The requested method is not yet implemented",
         )
@@ -171,6 +169,8 @@ class FormationEnergyWorkchainBase(WorkChain):
             "v_host": self.ctx.v_host,
             "v_defect_q0": self.ctx.v_defect_q0,
             "v_defect_q": self.ctx.v_defect_q,
+            "rho_host": self.ctx.rho_host,
+            "rho_defect_q": self.ctx.rho_defect_q,
             "defect_charge": self.inputs.defect_charge,
             "defect_site": self.inputs.defect_site,
             "host_structure": self.inputs.host_structure,
@@ -220,7 +220,7 @@ class FormationEnergyWorkchainBase(WorkChain):
                     correction_wc.exit_status
                 )
             )
-            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_CORRECTION
+            return self.exit_codes.ERROR_CORRECTION_WORKCHAIN_FAILED
         else:
             self.ctx.total_correction = correction_wc.outputs.total_correction
             self.ctx.electrostatic_correction = (

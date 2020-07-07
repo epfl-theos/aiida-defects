@@ -63,6 +63,7 @@ class ModelPotentialWorkchain(WorkChain):
         )
         #spec.expose_outputs(PwBaseWorkChain, exclude=('output_structure',))
         spec.output('model_energy', valid_type=orm.Float, required=True)
+        spec.output('model_charge', valid_type=orm.ArrayData, required=True)
         spec.output('model_potential', valid_type=orm.ArrayData, required=True)
         spec.output('model_structure',
                     valid_type=orm.StructureData,
@@ -83,7 +84,7 @@ class ModelPotentialWorkchain(WorkChain):
         self.report("Generating model structure")
         self.ctx.model_structure = create_model_structure(
             self.inputs.host_structure, self.inputs.scale_factor)
-        # Get cell matricies
+        # Get cell matrices
         self.ctx.real_cell = get_cell_matrix(self.ctx.model_structure)
         self.ctx.reciprocal_cell = get_reciprocal_cell(self.ctx.real_cell)
         self.report("DEBUG: recip cell: {}".format(self.ctx.reciprocal_cell))
@@ -138,8 +139,6 @@ class ModelPotentialWorkchain(WorkChain):
         self.report("Computing model energy for scale factor {}".format(
             self.inputs.scale_factor.value))
 
-        self.report("DEBUG: type {}".format(type(self.ctx.model_potential)))
-
         self.ctx.model_energy = get_energy(
             potential=self.ctx.model_potential,
             charge_density=self.ctx.charge_model,
@@ -154,6 +153,7 @@ class ModelPotentialWorkchain(WorkChain):
         """
         # Return the model potential for the cell which corresponds to the host structure
         self.out('model_energy', self.ctx.model_energy)
+        self.out('model_charge', self.ctx.charge_model)
         self.out('model_potential', self.ctx.model_potential)
         self.out('model_structure', self.ctx.model_structure)
         self.report("Finished successfully")

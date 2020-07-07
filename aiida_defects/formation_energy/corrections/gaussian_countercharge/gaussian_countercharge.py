@@ -9,6 +9,7 @@ from __future__ import absolute_import
 
 from aiida.engine import WorkChain, calcfunction, ToContext, while_
 from aiida import orm
+from qe_tools.constants import hartree_to_ev
 
 from aiida_defects.formation_energy.potential_alignment.potential_alignment import PotentialAlignmentWorkchain
 from .model_potential.model_potential import ModelPotentialWorkchain
@@ -50,13 +51,13 @@ class GaussianCounterChargeWorkchain(WorkChain):
             help="Plane wave cutoff for electrostatic model.")
         spec.input("v_host",
             valid_type=orm.ArrayData,
-            help="The electrostatic potential of the host system.")
+            help="The electrostatic potential of the host system (in eV).")
         spec.input("v_defect_q0",
             valid_type=orm.ArrayData,
-            help="The electrostatic potential of the defect system in the 0 charge state.")
+            help="The electrostatic potential of the defect system in the 0 charge state (in eV).")
         spec.input("v_defect_q",
             valid_type=orm.ArrayData,
-            help="The electrostatic potential of the defect system in the target charge state.")
+            help="The electrostatic potential of the defect system in the target charge state (in eV).")
         spec.input("rho_host",
             valid_type=orm.ArrayData,
             help="The charge density of the host system.")
@@ -93,7 +94,8 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.output('total_correction', valid_type=orm.Float)
         spec.output('electrostatic_correction', valid_type=orm.Float)
         # spec.output('isolated_energy', valid_type=orm.Float, required=True) # Not sure if anyone would use this
-        # spec.output('model_correction_energies', valid_type=orm.Dict, required=True) # Again, not sure if useful
+        # spec.output('model_correction_energies', valid_type=orm.Dict, required=True)
+
         spec.exit_code(201,
             'ERROR_INVALID_INPUT_ARRAY',
             message='the input ArrayData object can only contain one array')
@@ -111,7 +113,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             message='the final scf PwBaseWorkChain sub process failed')
         spec.exit_code(304,
             'ERROR_BAD_CHARGE_FIT',
-            message='the mode fit to charge density is extremely poor')
+            message='the mode fit to charge density is exceeds tolerances')
 
 
     def setup(self):
@@ -121,7 +123,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         ## Verification
         if self.inputs.model_iterations_required < 3:
-           self.report('The requested number of iterations, {}, is too low. At least 3 are required to achieve an #adequate data fit'.format(self.inputs.model_iterations_required.value))
+           self.report('The requested number of iterations, {}, is too low. At least 3 are required to achieve an adequate data fit'.format(self.inputs.model_iterations_required.value))
            return self.exit_codes.ERROR_BAD_INPUT_ITERATIONS_REQUIRED
 
         # Track iteration number
@@ -212,7 +214,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
     def check_model_potential_workchains(self):
         """
-        Check if the model potential alignment workchains have finished correctly.
+        Check if the model potential workchains have finished correctly.
         If yes, assign the outputs to the context
         """
         for ii in range(self.inputs.model_iterations_required.value):
@@ -228,6 +230,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             else:
                 if scale_factor == 1:
                     self.ctx.v_model = model_workchain.outputs.model_potential
+                    self.ctx.charge_model = model_workchain.outputs.model_charge
                 self.ctx.model_energies[str(scale_factor)] = model_workchain.outputs.model_energy
                 self.ctx.model_structures[str(scale_factor)] = model_workchain.outputs.model_structure
 
@@ -249,18 +252,32 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         # Compute the alignment between the defect, in q=0, and the host
         inputs = {
-            "first_potential": self.inputs.v_defect_q0,
-            "second_potential": self.inputs.v_host
+            "density_weighted":{
+                "first_potential": self.inputs.v_defect_q0,
+                "second_potential": self.inputs.v_host,
+                "charge_density": self.ctx.charge_model
+            },
+            "allow_interpolation": orm.Bool(True)
         }
+
         workchain_future = self.submit(PotentialAlignmentWorkchain, **inputs)
         label = 'workchain_alignment_q0_to_host'
         self.to_context(**{label: workchain_future})
 
+        # Convert units from model potential workchain, and also change sign
+        # TODO: Check if this breaks provenance graph
+        v_model = orm.ArrayData()
+        v_model.set_array('data',
+            self.ctx.v_model.get_array(self.ctx.v_model.get_arraynames()[0])*-2.0) # Ha to Ry - This is dirty - need to harmonise units
+
         # Compute the alignment between the defect DFT difference potential, and the model
         inputs = {
-            "first_potential": self.ctx.v_defect_q_q0,
-            "second_potential": self.ctx.v_model,
-            "interpolate": orm.Bool(True)  # This will more or less always be required
+            "density_weighted":{
+                "first_potential": self.ctx.v_defect_q_q0,
+                "second_potential": v_model,
+                "charge_density": self.ctx.charge_model
+            },
+            "allow_interpolation": orm.Bool(True)
         }
         workchain_future = self.submit(PotentialAlignmentWorkchain, **inputs)
         label = 'workchain_alignment_dft_to_model'
