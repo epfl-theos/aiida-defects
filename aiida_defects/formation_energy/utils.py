@@ -8,7 +8,14 @@
 from __future__ import absolute_import
 
 from aiida.engine import calcfunction
+import numpy as np
 
+def get_vbm(calc_node):
+    N_electron = calc_node.res.number_of_electrons
+    vb_index = int(N_electron/2)-1
+    vbm = np.amax(calc_node.outputs.output_band.get_array('bands')[:,vb_index])
+
+    return vbm
 
 def run_pw_calculation(pw_inputs, structure, charge):
     """
@@ -45,12 +52,13 @@ def run_pw_calculation(pw_inputs, structure, charge):
 
 
 @calcfunction
-def get_raw_formation_energy(defect_energy, host_energy, chemical_potential,
+def get_raw_formation_energy(defect_energy, host_energy, add_or_remove, chemical_potential,
                              charge, fermi_energy, valence_band_maximum):
     """
     Compute the formation energy without correction
     """
-    e_f_uncorrected = defect_energy - host_energy - chemical_potential + (
+    sign_of_mu = {'add': +1.0, 'remove': -1.0}
+    e_f_uncorrected = defect_energy - host_energy - sign_of_mu[add_or_remove.value]*chemical_potential + (
         charge * (valence_band_maximum + fermi_energy))
     return e_f_uncorrected
 
