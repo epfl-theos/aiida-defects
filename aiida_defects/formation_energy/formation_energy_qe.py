@@ -325,15 +325,18 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         pp_inputs.metadata = self.inputs.qe.pp.scheduler_options.get_dict()
 
         # Fixed settings
-        params = orm.Dict(dict={
-            'INPUTPP': {
-                'plot_num': 11,   # Electrostatic potential
-            },
-            'PLOT': {
-                'iflag' : 3       # 3D
-            }
-        })
-        pp_inputs.parameters = params
+        #params = orm.Dict(dict={
+        #    'INPUTPP': {
+        #        'plot_num': 11,   # Electrostatic potential
+        #    },
+        #    'PLOT': {
+        #        'iflag' : 3       # 3D
+        #    }
+        #})
+        #pp_inputs.parameters = params
+        
+        pp_inputs.plot_number = orm.Int(11)  # Elctrostatic potential
+        pp_inputs.plot_dimension = orm.Int(3)  # 3D
 
         pp_inputs.parent_folder = self.ctx['calc_host'].outputs.remote_folder
         future = self.submit(pp_inputs)
@@ -420,15 +423,18 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
 
         # Fixed settings
         # Fixed settings
-        params = orm.Dict(dict={
-            'INPUTPP': {
-                'plot_num': 0,   # Electron density
-            },
-            'PLOT': {
-                'iflag' : 3       # 3D
-            }
-        })
-        pp_inputs.parameters = params
+#        params = orm.Dict(dict={
+#            'INPUTPP': {
+#                'plot_num': 0,   # Electron density
+#            },
+#            'PLOT': {
+#                'iflag' : 3       # 3D
+#            }
+#        })
+#        pp_inputs.parameters = params
+
+        pp_inputs.plot_number = orm.Int(0)  # Electron density
+        pp_inputs.plot_dimension = orm.Int(3)  # 3D
 
         pp_inputs.parent_folder = self.ctx['calc_host'].outputs.remote_folder
         future = self.submit(pp_inputs)
