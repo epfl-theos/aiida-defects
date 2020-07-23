@@ -107,8 +107,9 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                     cls.check_dft_calcs_gaussian_correction,
                     cls.get_dft_potentials_gaussian_correction,
                     cls.check_dft_potentials_gaussian_correction,
-                    cls.get_kohn_sham_potentials,
-                    #cls.get_charge_density,
+                    #cls.get_kohn_sham_potentials,
+                    cls.get_charge_density,
+                    cls.check_charge_density_calculations,
                     if_(cls.if_run_dfpt)(
                         cls.prep_hostcell_calc_for_dfpt,
                         cls.check_hostcell_calc_for_dfpt,
@@ -385,8 +386,20 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         pp_inputs.metadata = self.inputs.qe.pp.scheduler_options.get_dict()
 
         # Fixed settings
-        pp_inputs.plot_number = orm.Int(0)  # Elctrostatic potential
+        pp_inputs.plot_number = orm.Int(0)  # Electron Density
         pp_inputs.plot_dimension = orm.Int(3)  # 3D
+
+        # Host
+        if self.inputs.run_pw_host:
+            pp_inputs.parent_folder = self.ctx['calc_host'].outputs.remote_folder
+        else:
+            HostNode = orm.load_node(self.inputs.host_node.value)
+            pp_inputs.parent_folder = HostNode.outputs.remote_folder
+
+        future = self.submit(pp_inputs)
+        self.report('Extracting charge density of host structure (PK={}) with charge {} (PK={})'
+            .format(self.inputs.host_structure.pk, "0.0", future.pk))
+        self.to_context(**{'calc_rho_host': future})
 
         # Defect (q=0)
         if self.inputs.run_pw_defect_q0:
@@ -398,7 +411,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         future = self.submit(pp_inputs)
         self.report('Extracting charge density of defect structure (PK={}) with charge {} (PK={})'
             .format(self.inputs.defect_structure.pk, "0.0", future.pk))
-        self.to_context(**{'rho_defect_q0': future})
+        self.to_context(**{'calc_rho_defect_q0': future})
 
         # Defect (q=q)
         if self.inputs.run_pw_defect_q:
@@ -410,7 +423,51 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         future = self.submit(pp_inputs)
         self.report('Extracting charge density of defect structure (PK={}) with charge {} (PK={})'
             .format(self.inputs.defect_structure.pk, self.inputs.defect_charge.value, future.pk))
-        self.to_context(**{'rho_defect_q': future})
+        self.to_context(**{'calc_rho_defect_q': future})
+    
+    def check_charge_density_calculations(self):
+        """
+        Check if the required calculations for the Gaussian Countercharge correction workchain
+        have finished correctly.
+        """
+
+        # Host
+        host_pp = self.ctx['calc_rho_host']
+        if host_pp.is_finished_ok:
+            data_array = host_pp.outputs.output_data.get_array('data')
+            v_data = orm.ArrayData()
+            v_data.set_array('data', data_array)
+            self.ctx.rho_host = v_data
+        else:
+            self.report(
+                'Post processing for the host structure has failed with status {}'.format(host_pp.exit_status))
+            return self.exit_codes.ERROR_PP_CALCULATION_FAILED
+
+        # Defect (q=0)
+        defect_q0_pp = self.ctx['calc_rho_defect_q0']
+        if defect_q0_pp.is_finished_ok:
+            data_array = defect_q0_pp.outputs.output_data.get_array('data')
+            v_data = orm.ArrayData()
+            v_data.set_array('data', data_array)
+            self.ctx.rho_defect_q0 = v_data
+        else:
+            self.report(
+                'Post processing for the defect structure (with charge 0) has failed with status {}'
+                .format(defect_q0_pp.exit_status))
+            return self.exit_codes.ERROR_PP_CALCULATION_FAILED
+
+        # Defect (q=q)
+        defect_q_pp = self.ctx['calc_rho_defect_q']
+        if defect_q_pp.is_finished_ok:
+            data_array = defect_q_pp.outputs.output_data.get_array('data')
+            v_data = orm.ArrayData()
+            v_data.set_array('data', data_array)
+            self.ctx.rho_defect_q = v_data
+        else:
+            self.report(
+                'Post processing for the defect structure (with charge 0) has failed with status {}'
+                .format(defect_q_pp.exit_status))
+            return self.exit_codes.ERROR_PP_CALCULATION_FAILED
 
     def prep_hostcell_calc_for_dfpt(self):
         """

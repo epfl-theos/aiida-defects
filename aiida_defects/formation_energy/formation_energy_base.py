@@ -192,6 +192,7 @@ class FormationEnergyWorkchainBase(WorkChain):
             "v_defect_q0": self.ctx.v_defect_q0,
             "v_defect_q": self.ctx.v_defect_q,
             "rho_host": self.ctx.rho_host,
+            #"rho_host": self.ctx.rho_defect_q0,
             "rho_defect_q": self.ctx.rho_defect_q,
             "defect_charge": self.inputs.defect_charge,
             "defect_site": self.inputs.defect_site,
