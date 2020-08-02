@@ -8,7 +8,7 @@ from aiida.orm import StructureData
 from aiida.orm import Float, Int, Str, List, Bool, Dict, ArrayData, XyData, StructureData
 from aiida_defects.formation_energy.utils import get_vbm
 from aiida_defects.formation_energy.fermi_level.fermi_level import FermiLevelWorkchain
-#from aiida_defects.formation_energy.fermi_level.utils import compute_net_charge
+from aiida_defects.formation_energy.fermi_level.utils import compute_net_charge
 
 with open('/home/sokseiham/Documents/Defect_calculations/Li7PS6/defect_dict.json') as f:
 	defect_dict = json.load(f)
@@ -57,10 +57,9 @@ vbm = get_vbm(unitcell_node)
 Dos = dos_node.outputs.output_dos
 dos_x = Dos.get_x()[1] - vbm
 dos_y = Dos.get_y()[1][1]
-chem_potentials = {'Li': -1.923-195.514, 'P':-191.038, 'S':-0.835-326.678}
-#chem_potentials = {'Li': -1.923-195.514*np.ones(3), 'P':-191.038*np.ones(3), 'S':-0.835-326.678*np.ones(3)}
+#chem_potentials = {'Li': -1.923-195.514, 'P':-191.038, 'S':-0.835-326.678}
+chem_potentials = {'Li': -1.923-195.514+np.array([-1.5,0,1.5]), 'P':-191.038*np.ones(3), 'S':-0.835-326.678*np.ones(3)}
 #chem_potentials = {'Li': -1.923-195.514*np.ones((3,3)), 'P':-191.038*np.ones((3,3)), 'S':-0.835-326.678*np.ones((3,3))}
-#print(chem_potentials)
 input_chem_shape = np.ones_like(chem_potentials['Li'])
 
 #f = compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperature, host_structure, dos_x, dos_y, band_gap, dopant=None)
@@ -100,8 +99,8 @@ inputs = {
 #dos_y = dos_y.get_array('data')
 #band_gap = inputs["band_gap"].value
 
-#f = compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperature, unitcell, dos_x, dos_y, band_gap, dopant=None)
-#print(f(0.2*input_chem_shape))
+f = compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperature, host_structure, band_gap, dos_x, dos_y, dopant=None)
+print(f(0.2*input_chem_shape))
 
-workchain_future = submit(FermiLevelWorkchain, **inputs)
-print('Submitted workchain with PK=' + str(workchain_future.pk))
+#workchain_future = submit(FermiLevelWorkchain, **inputs)
+#print('Submitted workchain with PK=' + str(workchain_future.pk))
