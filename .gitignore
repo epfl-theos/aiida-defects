@@ -1,1 +1,13 @@
 *.pyc
+*.swo
+*.swp
+.project
+*.egg*
+.DS_Store
+.coverage
+.pytest_cache
+.vscode/
+.history/
+docs/build
+
+.ipynb_checkpoints/
