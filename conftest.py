@@ -1,63 +1,43 @@
 """
-For pytest.
-Initialise a text database and profile.
+For pytest 
+initialise a text database and profile
 """
 from __future__ import absolute_import
 import tempfile
 import shutil
 import pytest
-import os
-import glob
-import pkg_resources
 
-from aiida.utils.fixtures import fixture_manager
-
-def get_backend_str():
-    """ 
-    Return database backend string.
-    Reads from 'TEST_AIIDA_BACKEND' environment variable.
-    Defaults to django backend.
-    """
-    from aiida.backends.profile import BACKEND_DJANGO, BACKEND_SQLA
-    backend_env = os.environ.get('TEST_AIIDA_BACKEND')
-    if not backend_env: 
-        return BACKEND_DJANGO
-    elif  backend_env in (BACKEND_DJANGO, BACKEND_SQLA):
-        return backend_env
-
-    raise ValueError("Unknown backend '{}' read from TEST_AIIDA_BACKEND environment variable".format(backend_env))
+from aiida.manage.fixtures import fixture_manager
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='session', autouse=True)
 def aiida_profile():
-    """Setup a test profile for the duration of the tests."""
+    """Set up a test profile for the duration of the tests"""
     with fixture_manager() as fixture_mgr:
         yield fixture_mgr
 
 
-@pytest.fixture(scope='function')
-def new_database(aiida_profile):
-    """Clear the database after each test."""
+@pytest.fixture(scope='function', autouse=True)
+def clear_database(aiida_profile):
+    """Clear the database after each test"""
     yield
     aiida_profile.reset_db()
 
 
 @pytest.fixture(scope='function')
 def new_workdir():
-    """Get a new temporary folder to use as the computer's workdir."""
+    """Get a temporary folder to use as the computer's work directory."""
     dirpath = tempfile.mkdtemp()
     yield dirpath
     shutil.rmtree(dirpath)
 
-
 @pytest.fixture(scope='class')
 def test_structures():
     """Get a library of structure data objects for use in tests"""
-    import pymatgen.io.cif
-    import pymatgen.io.aiida
-    import aiida_defects.tools.defects
-
-    aiida_structure_adaptor = pymatgen.io.aiida.AiidaStructureAdaptor()
+    import pkg_resources
+    import glob
+    import pymatgen
+    from aiida.orm import StructureData
 
     structures_dict = {}
 
@@ -66,9 +46,36 @@ def test_structures():
     # Look for cif files in the data dir, convert them to StructureData objects and 
     # store in the dictionary with the filename as the key
     for file_path in glob.glob(data_dir+'*.cif'):
-        structure_mg= pymatgen.io.cif.Structure.from_file(file_path)
-        structure_sd = aiida_structure_adaptor.get_structuredata(structure_mg)
+        structure_mg= pymatgen.Structure.from_file(file_path)
+        structure_sd = StructureData(pymatgen=structure_mg)
         label = file_path.split('/')[-1].rstrip('.cif')
         structures_dict[label] = structure_sd
     
     return structures_dict   
+
+# @pytest.fixture(scope='function')
+# def aiida_localhost_computer(new_workdir):
+#     """Get an AiiDA computer for localhost.
+
+#     :return: The computer node
+#     :rtype: :py:class:`aiida.orm.Computer`
+#     """
+#     from aiida_defects.helpers import get_computer
+
+#     computer = get_computer(workdir=new_workdir)
+
+#     return computer
+
+
+# @pytest.fixture(scope='function')
+# def aiida_code(aiida_localhost_computer):
+#     """Get an AiiDA code.
+
+#     :return: The code node
+#     :rtype: :py:class:`aiida.orm.Code`
+#     """
+#     from aiida_defects.helpers import get_code
+
+#     code = get_code(entry_point='aiida_defects', computer=aiida_localhost_computer)
+
+#     return code

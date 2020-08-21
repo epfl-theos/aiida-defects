@@ -1,27 +1,26 @@
 # -*- coding: utf-8 -*-
-###########################################################################
-# Copyright (c), The AiiDA-Defects authors. All rights reserved.          #
-#                                                                         #
-# AiiDA-Defects is hosted on GitHub at https://github.com/...             #
-# For further information on the license, see the LICENSE.txt file        #
-###########################################################################
+########################################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
+#                                                                                      #
+# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# For further information on the license, see the LICENSE.txt file                     #
+########################################################################################
 from __future__ import absolute_import
 import sys
 import pymatgen
 import numpy as np
 from copy import deepcopy
-from aiida.orm.data.parameter import ParameterData
-from aiida.orm.data.structure import StructureData
-from aiida.orm.data.array import ArrayData
-from aiida.orm import DataFactory
-from aiida.work.workfunction import workfunction
+from aiida.orm.nodes import Dict
+from aiida.orm import StructureData
+from aiida.orm.nodes import ArrayData
+from aiida.engine import WorkFunction
 from aiida.orm.data.base import Float, Str, NumericType, BaseType, Int, Bool, List
 from aiida.orm import load_node
 import six
 from six.moves import range
 from six.moves import zip
 
-####################################################################################
+#################################################################################################
 #This module contains:								   #
 # 1) defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster)   #
 # 2) explore_defect(host_structure, defective_structure, defect_type)		   #
@@ -29,10 +28,12 @@ from six.moves import zip
 # 4) find_defect_index(defect_creator_output)                                      #
 # 5) defect_creator_by_index(structure, find_defect_index_output)                  #
 # 6) distance_from_defect_aiida(defective_structure, defect_position)              #
-####################################################################################
+#################################################################################################
+
 
 @workfunction
-def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
+def defect_creator(host_structure, vacancies, substitutions, scale_sc,
+                   cluster):
     """
     Workfunction that creates defects in a host structure on the basis of symmetry considerations.
 
@@ -74,25 +75,27 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
     #    sys.exit("You did not specified a defect type. Please check your inputs")
 
     #Converting an AiiDA StructureData in pymatgen Structure
-    host_mg=host_structure.get_pymatgen()
-    
-    
+    host_mg = host_structure.get_pymatgen()
+
     #Check that the elements for which defects should be created are contained in host_structure
-    elements_mg=host_mg.types_of_specie
+    elements_mg = host_mg.types_of_specie
     elements = []
     for element in elements_mg:
         elements.append(str(element))
-        
+
     for specie in vacancies:
         if specie not in elements:
-            sys.exit("The  element {} for which the creation of vacancies was requested is not contained in the host structure. Check your input".format(specie))
-    
-    substitutions=substitutions.get_dict()
- 
+            sys.exit(
+                "The  element {} for which the creation of vacancies was requested is not contained in the host structure. Check your input"
+                .format(specie))
+
+    substitutions = substitutions.get_dict()
+
     for specie in substitutions:
         if specie not in elements:
-            sys.exit("The  element {} for which the creation of substitutional/antisite defects was requested is not contained in the host structure. Check your input".format(specie))
-            
+            sys.exit(
+                "The  element {} for which the creation of substitutional/antisite defects was requested is not contained in the host structure. Check your input"
+                .format(specie))
 
     #Check that more than one defect is specified when a cluster is requested
     n_vac = 0
@@ -101,15 +104,16 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
         n_vac += 1
     for specie in substitutions:
         n_sub += 1
-    
+
     if cluster and n_vac + n_sub <= 1:
-        sys.exit("You cannot create a cluster of defects by specifing only one defect")
-    
-    
+        sys.exit(
+            "You cannot create a cluster of defects by specifing only one defect"
+        )
+
     from pymatgen.core import Structure
     from pymatgen.core.sites import PeriodicSite
     from pymatgen.analysis.defects.point_defects import Defect, Vacancy, ValenceIonicRadiusEvaluator
-    
+
     def structure_analyzer(host_mg):
         """
         Perform symmetry analysis of defect sites
@@ -129,35 +133,36 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
         radii = valence_evaluator.radii
         valences = valence_evaluator.valences
         vacancy = Vacancy(host_mg, radii, valences)
-        
+
         return vacancy
-      
-    #Setting up the defective supercell    
-    scaling_matrix = [[scale_sc[0], 0, 0], [0, scale_sc[1], 0], [0, 0, scale_sc[2]]]
+
+    #Setting up the defective supercell
+    scaling_matrix = [[scale_sc[0], 0, 0], [0, scale_sc[1], 0],
+                      [0, 0, scale_sc[2]]]
     limit_return_structures = None
-    
+
     #Creating individual defects
     if not cluster:
-        
+
         vacancy = structure_analyzer(host_mg)
 
-        
         #Creating vacancies
         vac = {}
         vac_scs = []
         tmp_vac_scs_final = []
 
         for specie in vacancies:
-            vac_scs = vacancy.make_supercells_with_defects(scaling_matrix, specie, limit_return_structures)
+            vac_scs = vacancy.make_supercells_with_defects(
+                scaling_matrix, specie, limit_return_structures)
             tmp_vac_scs = deepcopy(vac_scs)
             host_final = tmp_vac_scs[0]
             del tmp_vac_scs[0]
             tmp_vac_scs_final += tmp_vac_scs
 
-        
-            for i in range(1,len(vac_scs)):
-                vac_sc_site = list(set(vac_scs[0].sites)-set(vac_scs[i].sites))
-    
+            for i in range(1, len(vac_scs)):
+                vac_sc_site = list(
+                    set(vac_scs[0].sites) - set(vac_scs[i].sites))
+
         if len(vacancies) > 0:
             vac_scs_final = [host_final]
         else:
@@ -165,7 +170,7 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
         vac_scs_final += tmp_vac_scs_final
 
         #Creating substitutions & antisites
-   
+
         sub = {}
         sub_scs = []
         sub_scs_final = []
@@ -173,11 +178,12 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
         #substitutions=substitutions.get_dict()
         for specie, substitute in six.iteritems(substitutions):
             for element in substitute:
-                sub_scs = vacancy.make_supercells_with_defects(scaling_matrix, specie, limit_return_structures)
+                sub_scs = vacancy.make_supercells_with_defects(
+                    scaling_matrix, specie, limit_return_structures)
 
-            
-                for i in range(1,len(sub_scs)):
-                    sub_sc_site = list(set(sub_scs[0].sites)-set(sub_scs[i].sites))
+                for i in range(1, len(sub_scs)):
+                    sub_sc_site = list(
+                        set(sub_scs[0].sites) - set(sub_scs[i].sites))
                     sub_scs[i].append(element, sub_sc_site[0].frac_coords)
 
                 tmp_sub_scs = deepcopy(sub_scs)
@@ -187,11 +193,10 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
 
         sub_scs_1 = [host_final]
         sub_scs_1 += sub_scs_final
-    
-    
+
     #Creating clusters of defects
     else:
-        
+
         #Creating vacancies
         vac = {}
         vac_scs = []
@@ -199,10 +204,12 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
         num_defect = 0
         tmp_structure = [host_mg]
 
-        while num_defect != num_vac:    
+        while num_defect != num_vac:
             for structure in tmp_structure:
                 vacancy = structure_analyzer(structure)
-                vac_scs = vacancy.make_supercells_with_defects(scaling_matrix, vacancies[num_defect], limit_return_structures)
+                vac_scs = vacancy.make_supercells_with_defects(
+                    scaling_matrix, vacancies[num_defect],
+                    limit_return_structures)
 
             num_defect += 1
             tmp_structure = vac_scs
@@ -212,34 +219,38 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
         #Creating substitutions or antisites
         sub = {}
         sub_scs = []
-        sub_scs_final =[]
-        sub_scs_final2 =[]
+        sub_scs_final = []
+        sub_scs_final2 = []
 
         #substitutions=substitutions.get_dict()
         species = []
         for specie in substitutions:
             species.append(specie)
 
-        if not vacancies:       
+        if not vacancies:
             tmp_structure = [host_mg]
         else:
             tmp_structure = vac_scs
-        
-        num_defect = 0    
+
+        num_defect = 0
         num_sub = len(species)
-    
+
         if species:
             while num_defect != num_sub:
                 for structure in tmp_structure:
                     for element in substitutions[str(species[num_defect])]:
                         vacancy = structure_analyzer(structure)
-                        sub_scs = vacancy.make_supercells_with_defects(scaling_matrix, str(species[num_defect]), limit_return_structures)
-   
-                        for i in range(1,len(sub_scs)):
-                            sub_sc_site = list(set(sub_scs[0].sites)-set(sub_scs[i].sites))
-                            sub_scs[i].append(element, sub_sc_site[0].frac_coords)
-                
-                        tmp_sub_scs = deepcopy(sub_scs)  
+                        sub_scs = vacancy.make_supercells_with_defects(
+                            scaling_matrix, str(species[num_defect]),
+                            limit_return_structures)
+
+                        for i in range(1, len(sub_scs)):
+                            sub_sc_site = list(
+                                set(sub_scs[0].sites) - set(sub_scs[i].sites))
+                            sub_scs[i].append(element,
+                                              sub_sc_site[0].frac_coords)
+
+                        tmp_sub_scs = deepcopy(sub_scs)
                         #host_comp = tmp_sub_scs[0]
                         del tmp_sub_scs[0]
                         sub_scs_final += tmp_sub_scs
@@ -249,24 +260,27 @@ def defect_creator(host_structure, vacancies, substitutions, scale_sc, cluster):
 
                 num_defect += 1
                 tmp_structure = tmp_sub_scs2
-   
+
         clusters = [host_comp]
         clusters += tmp_structure
-    
+
     #Creating a dictionary containing all the defective structures, in the form of AiiDA StructureData objects
     defective_structures = {}
-    
+
     if not cluster:
         if len(vac_scs_final) > 1:
             for n, supercell in enumerate(vac_scs_final):
-                defective_structures["vacancy_"+str(n)] = StructureData(pymatgen=supercell)
+                defective_structures["vacancy_" + str(n)] = StructureData(
+                    pymatgen=supercell)
         if len(sub_scs_1) > 1:
             for n, supercell in enumerate(sub_scs_1):
-                defective_structures["substitution_"+str(n)] = StructureData(pymatgen=supercell)
+                defective_structures["substitution_" + str(n)] = StructureData(
+                    pymatgen=supercell)
     else:
         for n, supercell in enumerate(clusters):
-            defective_structures["cluster_"+str(n)] = StructureData(pymatgen=supercell)
-        
+            defective_structures["cluster_" + str(n)] = StructureData(
+                pymatgen=supercell)
+
     return defective_structures
 
 
@@ -303,20 +317,18 @@ def explore_defect(host_structure, defective_structure, defect_type):
     
     """
     defect_info = {}
-    
+
     def fractional_coordinates(structure_mg):
-        cell_a= structure_mg.lattice.a
-        cell_b= structure_mg.lattice.b
-        cell_c= structure_mg.lattice.c
-        
-            
+        cell_a = structure_mg.lattice.a
+        cell_b = structure_mg.lattice.b
+        cell_c = structure_mg.lattice.c
+
         frac = []
         cart = []
-        for  i in structure_mg.sites:
-            x = round(i.frac_coords[0],5)
-            y = round(i.frac_coords[1],5)
-            z = round(i.frac_coords[2],5)
-            
+        for i in structure_mg.sites:
+            x = round(i.frac_coords[0], 5)
+            y = round(i.frac_coords[1], 5)
+            z = round(i.frac_coords[2], 5)
 
             while x < 0:
                 x += 1.
@@ -324,18 +336,19 @@ def explore_defect(host_structure, defective_structure, defect_type):
                 y += 1.
             while z < 0:
                 z += 1.
-                
+
             while x >= 1.:
                 x -= 1.
             while y >= 1.:
                 y -= 1.
             while z >= 1.:
                 z -= 1.
-            
-            frac.append(str(i.specie)+"-"+str(x)+'_'+str(y)+'_'+str(z))
-            cart.append(np.array([i.coords[0],i.coords[1],i.coords[2]])) 
-        return  {'frac' :  frac, 'cart' : cart}
-    
+
+            frac.append(
+                str(i.specie) + "-" + str(x) + '_' + str(y) + '_' + str(z))
+            cart.append(np.array([i.coords[0], i.coords[1], i.coords[2]]))
+        return {'frac': frac, 'cart': cart}
+
     def explore_vacancy(host_mg, defect_mg):
         """
         ?
@@ -355,20 +368,24 @@ def explore_defect(host_structure, defective_structure, defect_type):
         """
         coord_host = fractional_coordinates(host_mg)
         coord_defect = fractional_coordinates(defect_mg)
-        
+
         host_frac = coord_host['frac']
         def_frac = coord_defect['frac']
-        
-        defect_site = list(set(host_frac)-set(def_frac))
-                
-        n_cart = [n for n, site in enumerate(host_frac) if site in defect_site][0]
-              
-        defect_info = {'atom_type' : str(defect_site[0].split('_')[0].split('-')[0]),
-                       'defect_name' : "V_"+str(defect_site[0].split('_')[0].split('-')[0]),
-                       'defect_position' : coord_host['cart'][n_cart]
-#                        'defect_position' : list([str(defect_site[0].split('_')[0].split('-')[1]),
-#                                                  defect_site[0].split('_')[1],
-#                                                  defect_site[0].split('_')[2]]),
+
+        defect_site = list(set(host_frac) - set(def_frac))
+
+        n_cart = [
+            n for n, site in enumerate(host_frac) if site in defect_site
+        ][0]
+
+        defect_info = {
+            'atom_type': str(defect_site[0].split('_')[0].split('-')[0]),
+            'defect_name':
+            "V_" + str(defect_site[0].split('_')[0].split('-')[0]),
+            'defect_position': coord_host['cart'][n_cart]
+            #                        'defect_position' : list([str(defect_site[0].split('_')[0].split('-')[1]),
+            #                                                  defect_site[0].split('_')[1],
+            #                                                  defect_site[0].split('_')[2]]),
         }
         return defect_info
 
@@ -391,25 +408,30 @@ def explore_defect(host_structure, defective_structure, defect_type):
         """
         coord_host = fractional_coordinates(host_mg)
         coord_defect = fractional_coordinates(defect_mg)
-        
+
         host_frac = coord_host['frac']
         def_frac = coord_defect['frac']
-        
-        defect_site = list(set(def_frac)-set(host_frac)) 
-        defect_site_host = list(set(host_frac)-set(def_frac))
-        
-        n_cart = [n for n, site in enumerate(host_frac) if site in defect_site_host][0]
-        
-        defect_info = {'atom_type' : str(defect_site[0].split('_')[0].split('-')[0]),
-                       "defect_name" : str(defect_site_host[0].split('_')[0].split('-')[0])+"_"+str(defect_site[0].split('_')[0].split('-')[0]),
-                        'defect_position' : coord_host['cart'][n_cart]
-#                       list([str(defect_site[0].split('_')[0].split('-')[1]),
-#                                                  defect_site[0].split('_')[1],
-#                                                  defect_site[0].split('_')[2]]),
+
+        defect_site = list(set(def_frac) - set(host_frac))
+        defect_site_host = list(set(host_frac) - set(def_frac))
+
+        n_cart = [
+            n for n, site in enumerate(host_frac) if site in defect_site_host
+        ][0]
+
+        defect_info = {
+            'atom_type':
+            str(defect_site[0].split('_')[0].split('-')[0]),
+            "defect_name":
+            str(defect_site_host[0].split('_')[0].split('-')[0]) + "_" + str(
+                defect_site[0].split('_')[0].split('-')[0]),
+            'defect_position':
+            coord_host['cart'][n_cart]
+            #                       list([str(defect_site[0].split('_')[0].split('-')[1]),
+            #                                                  defect_site[0].split('_')[1],
+            #                                                  defect_site[0].split('_')[2]]),
         }
         return defect_info
-    
-
 
     def explore_cluster(host_mg, defect_mg):
         """
@@ -428,61 +450,62 @@ def explore_defect(host_structure, defective_structure, defect_type):
             ?
 
         """
-        elements_mg=host_mg.types_of_specie
+        elements_mg = host_mg.types_of_specie
         elements = []
         for element in elements_mg:
             elements.append(str(element))
-        
-        
+
         coord_host = fractional_coordinates(host_mg)
         coord_defect = fractional_coordinates(defect_mg)
-        
+
         host_frac = coord_host['frac']
         def_frac = coord_defect['frac']
-        
 
-     
-        defect_sites = list(set(host_frac)-set(def_frac))
-        defect_sites_host = list(set(def_frac)-set(host_frac))
+        defect_sites = list(set(host_frac) - set(def_frac))
+        defect_sites_host = list(set(def_frac) - set(host_frac))
 
+        for n, site in enumerate(defect_sites):
+            check_vac = [
+                site for j in def_frac if (str(site.split('-')[1])) in j
+            ]
 
-
-        for n, site in enumerate(defect_sites): 
-            check_vac = [site for j in def_frac if (str(site.split('-')[1])) in j]
-            
-            if str(site.split('_')[0].split('-')[0]) in elements and bool(check_vac) == False:
-                n_cart = [k for k, sit in enumerate(host_frac) if sit in site][0]
-                defect_info = {'atom_type'+"_v_"+str(n) : str(site.split('_')[0].split('-')[0]),
-                               'defect_name'+"_v_"+str(n) : "V"+"_"+str(site.split('_')[0].split('-')[0]),
-                                'defect_position'+"_v_"+str(n) :  coord_host['cart'][n_cart]
-#                                list([str(site.split('_')[0].split('-')[1]),
-#                                                                          site.split('_')[1],
-#                                                                          site.split('_')[2]])
+            if str(site.split('_')[0].split('-')[0]) in elements and bool(
+                    check_vac) == False:
+                n_cart = [k for k, sit in enumerate(host_frac)
+                          if sit in site][0]
+                defect_info = {
+                    'atom_type' + "_v_" + str(n):
+                    str(site.split('_')[0].split('-')[0]),
+                    'defect_name' + "_v_" + str(n):
+                    "V" + "_" + str(site.split('_')[0].split('-')[0]),
+                    'defect_position' + "_v_" + str(n):
+                    coord_host['cart'][n_cart]
+                    #                                list([str(site.split('_')[0].split('-')[1]),
+                    #                                                                          site.split('_')[1],
+                    #                                                                          site.split('_')[2]])
                 }
 
         for n, site in enumerate(defect_sites_host):
             for i in defect_sites:
-                if  site.split('_')[1] == i.split('_')[1]:
+                if site.split('_')[1] == i.split('_')[1]:
                     element = str(i.split('_')[0].split('-')[0])
-                    
 
-
-            
-                    
             n_cart = [k for k, sit in enumerate(def_frac) if sit in site][0]
 
-
-            defect_info['atom_type'+"_s_"+str(n)] = str(site.split('_')[0].split('-')[0])
-            defect_info['defect_name'+"_s_"+str(n)] =  str(element)+"_"+str(site.split('_')[0].split('-')[0])
-            defect_info['defect_position'+"_s_"+str(n)] = list([str(site.split('_')[0].split('-')[1]),
-                                                                         site.split('_')[1],
-                                                                         site.split('_')[2]])
+            defect_info['atom_type' + "_s_" + str(n)] = str(
+                site.split('_')[0].split('-')[0])
+            defect_info['defect_name' + "_s_" +
+                        str(n)] = str(element) + "_" + str(
+                            site.split('_')[0].split('-')[0])
+            defect_info['defect_position' + "_s_" + str(n)] = list([
+                str(site.split('_')[0].split('-')[1]),
+                site.split('_')[1],
+                site.split('_')[2]
+            ])
         return defect_info
-                                                       
-                                                       
+
     host_mg = host_structure.get_pymatgen()
     defect_mg = defective_structure.get_pymatgen()
-
 
     if defect_type == "vacancy":
         defect_info = explore_vacancy(host_mg, defect_mg)
@@ -491,19 +514,17 @@ def explore_defect(host_structure, defective_structure, defect_type):
     elif defect_type == "cluster":
         defect_info = explore_cluster(host_mg, defect_mg)
     elif defect_type == "unknown":
-      
+
         n_atoms_host = 0
         for site in host_mg.sites:
             n_atoms_host += 1
         n_atoms_defect = 0
         for site in defect_mg.sites:
             n_atoms_defect += 1
-            
-        
+
         host_frac = fractional_coordinates(host_mg)['frac']
         def_frac = fractional_coordinates(defect_mg)['frac']
-        n_defects = len(list(set(host_frac)-set(def_frac)))
-
+        n_defects = len(list(set(host_frac) - set(def_frac)))
 
         if n_defects == 1 and n_atoms_defect < n_atoms_host:
             defect_info = explore_vacancy(host_mg, defect_mg)
@@ -514,11 +535,12 @@ def explore_defect(host_structure, defective_structure, defect_type):
         else:
             sys.exit("Error: check your input structures.")
     else:
-        sys.exit("{} is not a valid value for the variable defect_type. Please insert one of the following: \
-                \n vacancy, substitution, cluster, unknown".format(defect_type))
+        sys.exit(
+            "{} is not a valid value for the variable defect_type. Please insert one of the following: \
+                \n vacancy, substitution, cluster, unknown".format(
+                defect_type))
 
     return defect_info
-
 
 
 def distance_from_defect(defective_structure, defect_position):
@@ -540,7 +562,6 @@ def distance_from_defect(defective_structure, defect_position):
     """
     from math import sqrt
     from mpmath import nint
-
 
     cell_x = defective_structure.cell[0][0]
     cell_y = defective_structure.cell[1][1]
@@ -582,66 +603,83 @@ def find_defect_index(defect_creator_output):
         (e.g. cluster_1['defect_name_v_0] and cluster_1['defect_name_s_0] for a cluster made by a vacancy
         and a substitution)
     """
-    
+
     def find_vacancy_index(defect_creator_output):
-        vacancies={}
+        vacancies = {}
         if 'vacancy_0' in defect_creator_output:
             ref = defect_creator_output['vacancy_0']
         else:
             pass
         for defect, structure in six.iteritems(defect_creator_output):
             if 'vacancy' in defect and str(defect) != 'vacancy_0':
-                info = explore_defect(ref,structure,'vacancy')
+                info = explore_defect(ref, structure, 'vacancy')
                 vacancies[str(defect)] = {}
                 for n, site in enumerate(ref.sites):
                     if np.array_equal(site.position, info['defect_position']):
                         vacancies[str(defect)]['index'] = n
-                        vacancies[str(defect)]['defect_name'] = info['defect_name']
-                        vacancies[str(defect)]['defect_position'] = info['defect_position']
+                        vacancies[str(
+                            defect)]['defect_name'] = info['defect_name']
+                        vacancies[str(defect)]['defect_position'] = info[
+                            'defect_position']
                         vacancies[str(defect)]['atom_type'] = info['atom_type']
 
         return vacancies
 
-
     def find_substitution_index(defect_creator_output):
-        substitutions={}
+        substitutions = {}
         if 'substitution_0' in defect_creator_output:
             ref = defect_creator_output['substitution_0']
         else:
             pass
         for defect, structure in six.iteritems(defect_creator_output):
             if 'substitution' in defect and str(defect) != 'substitution_0':
-                info = explore_defect(ref,structure,'substitution')
+                info = explore_defect(ref, structure, 'substitution')
                 substitutions[str(defect)] = {}
                 for n, site in enumerate(ref.sites):
                     if np.array_equal(site.position, info['defect_position']):
                         substitutions[str(defect)]['index'] = n
-                        substitutions[str(defect)]['defect_name'] = info['defect_name']
-                        substitutions[str(defect)]['defect_position'] = info['defect_position']
-                        substitutions[str(defect)]['atom_type'] = info['atom_type']
+                        substitutions[str(
+                            defect)]['defect_name'] = info['defect_name']
+                        substitutions[str(defect)]['defect_position'] = info[
+                            'defect_position']
+                        substitutions[str(
+                            defect)]['atom_type'] = info['atom_type']
 
         return substitutions
 
     def find_cluster_index(defect_creator_output):
-        clusters={}
+        clusters = {}
         if 'cluster_0' in defect_creator_output:
             ref = defect_creator_output['cluster_0']
         else:
             pass
         for defect, structure in six.iteritems(defect_creator_output):
             if 'cluster' in defect and str(defect) != 'cluster_0':
-                info = explore_defect(ref,structure,'cluster')
+                info = explore_defect(ref, structure, 'cluster')
                 clusters[str(defect)] = {}
-                defect_name_list = [key for key in info  if 'defect_name' in key]
+                defect_name_list = [
+                    key for key in info if 'defect_name' in key
+                ]
                 for element in defect_name_list:
                     clusters[str(defect)][str(element)] = {}
                     for n, site in enumerate(ref.sites):
-                        if np.array_equal(site.position, info['defect_position_'+element.split('_')[2]+'_'+element.split('_')[3]]):
+                        if np.array_equal(
+                                site.position,
+                                info['defect_position_' + element.split('_')[2]
+                                     + '_' + element.split('_')[3]]):
                             clusters[str(defect)][element]['index'] = n
-                            clusters[str(defect)][element]['defect_position_'+element.split('_')[2]+'_'+element.split('_')[3]] = info['defect_position_'+element.split('_')[2]+'_'+element.split('_')[3]]
-                            clusters[str(defect)][element]['atom_type_'+element.split('_')[2]+'_'+element.split('_')[3]] = info['atom_type_'+element.split('_')[2]+'_'+element.split('_')[3]]
+                            clusters[str(defect)][element][
+                                'defect_position_' + element.split('_')[2] +
+                                '_' + element.split('_')[3]] = info[
+                                    'defect_position_' + element.split('_')[2]
+                                    + '_' + element.split('_')[3]]
+                            clusters[str(defect)][element][
+                                'atom_type_' + element.split('_')[2] + '_' +
+                                element.split('_')[3]] = info[
+                                    'atom_type_' + element.split('_')[2] + '_'
+                                    + element.split('_')[3]]
         return clusters
-    
+
     def merge_dicts(*dict_args):
         """
         Given any number of dicts, shallow copy and merge into a new dict,
@@ -651,14 +689,14 @@ def find_defect_index(defect_creator_output):
         for dictionary in dict_args:
             result.update(dictionary)
         return result
-    
-    
+
     vac = find_vacancy_index(defect_creator_output)
     sub = find_substitution_index(defect_creator_output)
     clu = find_cluster_index(defect_creator_output)
-    
-    return merge_dicts(vac,sub,clu)
-    
+
+    return merge_dicts(vac, sub, clu)
+
+
 @workfunction
 def defect_creator_by_index(structure, find_defect_index_output):
     """
@@ -721,49 +759,55 @@ def defect_creator_by_index(structure, find_defect_index_output):
     """
     structure_mg = structure.get_pymatgen()
     find_defect_index_output = find_defect_index_output.get_dict()
-    
+
     def create_vacancy(struct, index):
         struct2 = deepcopy(struct)
         del struct2[int(index)]
         return struct2
-        
+
     def create_substitution(struct, index, dopant):
         struct2 = deepcopy(struct)
         sub_site = struct[int(index)]
         del struct2[int(index)]
         struct2.append(str(dopant), sub_site.frac_coords)
         return struct2
-    
 
     defects_mg = {}
-    
+
     for defect in find_defect_index_output:
         if 'vacancy_' in defect:
-            defects_mg[defect] = create_vacancy(structure_mg, find_defect_index_output[defect]['index'])
+            defects_mg[defect] = create_vacancy(
+                structure_mg, find_defect_index_output[defect]['index'])
         elif 'substitution_' in defect:
-            defects_mg[defect] = create_substitution(structure_mg,
-                                                find_defect_index_output[defect]['index'],
-                                               find_defect_index_output[defect]['atom_type'])
+            defects_mg[defect] = create_substitution(
+                structure_mg, find_defect_index_output[defect]['index'],
+                find_defect_index_output[defect]['atom_type'])
         elif 'cluster_' in defect:
             for defect_name in find_defect_index_output[defect]:
                 if 'defect_name_v' in defect_name:
                     #print  find_defect_index_output[defect][defect_name]
-                    defects_mg[defect] = create_vacancy(structure_mg,
-                                                        find_defect_index_output[defect][defect_name]['index'])
+                    defects_mg[defect] = create_vacancy(
+                        structure_mg,
+                        find_defect_index_output[defect][defect_name]['index'])
             for defect_name in find_defect_index_output[defect]:
                 if 'defect_name_s' in defect_name:
-                    sub_site = structure_mg[int(find_defect_index_output[defect][defect_name]['index'])]
+                    sub_site = structure_mg[int(
+                        find_defect_index_output[defect][defect_name]
+                        ['index'])]
                     for n, site in enumerate(defects_mg[defect].sites):
-                        if np.array_equal(site.frac_coords, sub_site.frac_coords):
+                        if np.array_equal(site.frac_coords,
+                                          sub_site.frac_coords):
                             del defects_mg[defect][int(n)]
-                            defects_mg[defect].append(find_defect_index_output[defect][defect_name]['atom_type_'+defect_name.split('_')[2]+'_'+defect_name.split('_')[3]], 
-                                                      sub_site.frac_coords)
-    
+                            defects_mg[defect].append(
+                                find_defect_index_output[defect][defect_name]
+                                ['atom_type_' + defect_name.split('_')[2] + '_'
+                                 + defect_name.split('_')[3]],
+                                sub_site.frac_coords)
+
     defective_structures = {}
     for name, structs in six.iteritems(defects_mg):
         defective_structures[name] = StructureData(pymatgen=structs)
-        
-    
+
     for key in defects_mg.keys():
         if 'vacancy' in key:
             defective_structures['vacancy_0'] = structure
@@ -775,8 +819,8 @@ def defect_creator_by_index(structure, find_defect_index_output):
     for key in defects_mg.keys():
         if 'cluster' in key:
             defective_structures['cluster_0'] = structure
-            break    
-            
+            break
+
     return defective_structures
 
 
@@ -807,7 +851,6 @@ def distance_from_defect_aiida(defective_structure, defect_position):
     from math import sqrt
     from mpmath import nint
 
-
     cell_x = defective_structure.cell[0][0]
     cell_y = defective_structure.cell[1][1]
     cell_z = defective_structure.cell[2][2]
@@ -823,7 +866,7 @@ def distance_from_defect_aiida(defective_structure, defect_position):
         dist_z = site.position[2] - defect_position[2]
         dist_z = dist_z - nint(dist_z / cell_z) * cell_z
 
-        distance = sqrt(dist_x**2 +dist_y**2+dist_z**2)
+        distance = sqrt(dist_x**2 + dist_y**2 + dist_z**2)
         distances.append(distance)
 
     distances_from_defect = list(zip(defective_structure.sites, distances))
@@ -857,7 +900,6 @@ def distance_from_defect_pymatgen(defective_structure, defect_position):
     from math import sqrt
     from mpmath import nint
 
-
     cell_x = defective_structure.cell[0][0]
     cell_y = defective_structure.cell[1][1]
     cell_z = defective_structure.cell[2][2]
@@ -873,9 +915,9 @@ def distance_from_defect_pymatgen(defective_structure, defect_position):
         dist_z = site.coords[2] - defect_position[2]
         dist_z = dist_z - nint(dist_z / cell_z) * cell_z
 
-        distance = sqrt(dist_x**2 +dist_y**2+dist_z**2)
+        distance = sqrt(dist_x**2 + dist_y**2 + dist_z**2)
         distances.append(distance)
 
     distances_from_defect = list(zip(defect_mg.sites, distances))
 
-    return distances_from_defect 
+    return distances_from_defect
