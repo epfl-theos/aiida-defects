@@ -39,7 +39,7 @@ def prepare_pseudo_inputs(structure, pseudos):
 
 class FormationEnergyWorkchainSIESTA(FormationEnergyWorkchainBase):
     """
-    Compute the formation energy for a given defect using SIESTA
+    Compute the formation energy for a given defect using SIESTA code
     """
     @classmethod
     def define(cls, spec):
