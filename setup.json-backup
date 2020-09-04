@@ -19,8 +19,7 @@
             "defects.formation_energy.corrections.gaussian_countercharge = aiida_defects.formation_energy.corrections.gaussian_countercharge.gaussian_countercharge:GaussianCounterChargeWorkchain",
             "defects.formation_energy.corrections.gaussian_countercharge.model_potential = aiida_defects.formation_energy.corrections.gaussian_countercharge.model_potential.model_potential:ModelPotentialWorkchain",
             "defects.formation_energy.corrections.point_countercharge = aiida_defects.formation_energy.corrections.point_countercharge.point_countercharge:PointCounterChargeWorkchain",
-            "defects.formation_energy.potential_alignment = aiida_defects.formation_energy.potential_alignment.potential_alignment:PotentialAlignmentWorkchain",
-            "defects.formation_energy.siesta = aiida_defects.formation_energy_siesta.formation_energy_siesta:FormationEnergyWorkchainSIESTA"
+            "defects.formation_energy.potential_alignment = aiida_defects.formation_energy.potential_alignment.potential_alignment:PotentialAlignmentWorkchain"
         ]
     },
     "include_package_data": true,
@@ -35,6 +34,8 @@
     "extras_require": {
         "dev_precommit": [
             "pre-commit",
+            "pylint==1.9.4; python_version<'3.0'",
+            "pylint==2.2.2; python_version>='3.0'",
             "prospector==1.1.5",
             "pep8-naming==0.4.1",
             "modernize==0.7"
