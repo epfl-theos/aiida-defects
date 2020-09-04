@@ -8,58 +8,57 @@
 from __future__ import absolute_import
 
 from aiida.engine import calcfunction
+import numpy as np
 
+def get_vbm(calc_node):
+    N_electron = calc_node.res.number_of_electrons
+    vb_index = int(N_electron/2)-1
+    vbm = np.amax(calc_node.outputs.output_band.get_array('bands')[:,vb_index])
 
-#def run_pw_calculation(pw_inputs, structure, charge):
-#    """
-#    Run a QuantumESPRESSO PW.x calculation by invoking the appropriate workchain.
-#    The user is not restricted in how they set up the PW calculation.
-#    This function simply acts as a wrapper to run a user-configured generic pw.x builder object
-#
-#    Parameters
-#    ----------
-#    pw_builder : AiiDA ProcessBuilder
-#        An AiiDA ProcessBuilder object for the desired QuantumEspresso workchain
-#    structure: AiiDA StructureData
-#        The required structure
-#    charge: AiiDA Float
-#        The required total system charge. Adding an electron is negative by convention
+    return vbm
 
-#    Returns
-#    -------
-#    future
-#        A future representing the submitted calculation
-#    """
-#    from aiida.engine import submit
-#    from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-#    from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
-#
-#    # Add the appropriate system charge and structure
-#    pw_inputs['structure'] = structure
-#
-#    pw_inputs['parameters']['SYSTEM']['tot_charge'] = charge
-#
-#    future = submit(PwBaseWorkChain, **pw_inputs)
-#
-#    return future
+def run_pw_calculation(pw_inputs, structure, charge):
+    """
+    Run a QuantumESPRESSO PW.x calculation by invoking the appropriate workchain.
+    The user is not restricted in how they set up the PW calculation.
+    This function simply acts as a wrapper to run a user-configured generic pw.x builder object
 
+    Parameters
+    ----------
+    pw_builder : AiiDA ProcessBuilder
+        An AiiDA ProcessBuilder object for the desired QuantumEspresso workchain
+    structure: AiiDA StructureData
+        The required structure
+    charge: AiiDA Float
+        The required total system charge. Adding an electron is negative by convention
 
-#def run_siesta_calculation(pw_inputs, structure, charge):
-#    """
-#
-#    """
-#
-#    from aiida.engine import submit
-#    from aiida_siesta.workflows.base import SiestaBaseWorkChain
-#    from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
+    Returns
+    -------
+    future
+        A future representing the submitted calculation
+    """
+    from aiida.engine import submit
+    from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
+    from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
+
+    # Add the appropriate system charge and structure
+    pw_inputs['structure'] = structure
+
+    pw_inputs['parameters']['SYSTEM']['tot_charge'] = charge
+
+    future = submit(PwBaseWorkChain, **pw_inputs)
+
+    return future
+
 
 @calcfunction
-def get_raw_formation_energy(defect_energy, host_energy, chemical_potential,
+def get_raw_formation_energy(defect_energy, host_energy, add_or_remove, chemical_potential,
                              charge, fermi_energy, valence_band_maximum):
     """
     Compute the formation energy without correction
     """
-    e_f_uncorrected = defect_energy - host_energy - chemical_potential + (
+    sign_of_mu = {'add': +1.0, 'remove': -1.0}
+    e_f_uncorrected = defect_energy - host_energy - sign_of_mu[add_or_remove.value]*chemical_potential + (
         charge * (valence_band_maximum + fermi_energy))
     return e_f_uncorrected
 

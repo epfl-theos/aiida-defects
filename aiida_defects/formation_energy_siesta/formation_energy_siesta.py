@@ -14,7 +14,7 @@ from aiida.engine import WorkChain, calcfunction, ToContext, if_, submit
 from aiida.plugins import WorkflowFactory
 from aiida_siesta.workflows.base import SiestaBaseWorkChain
 
-from .formation_energy_base import FormationEnergyWorkchainBase
+from aiida_defects.formation_energy_siesta.formation_energy_base import FormationEnergyWorkchainBase
 #from .utils import run_siesta_calculation
 from .utils import get_raw_formation_energy, get_corrected_formation_energy, get_corrected_aligned_formation_energy
 
@@ -78,7 +78,7 @@ class FormationEnergyWorkchainSIESTA(FormationEnergyWorkchainBase):
             help="Parameters for the SIESTA calcuations. Some will be set automatically")
         spec.input("siesta.dft.supercell_host.options",
             valid_type=orm.Dict,
-            help="options for the SIESTA calcuations")
+            help="options exfor the SIESTA calcuations")
         # Defect_q0 without charge
         spec.input("siesta.dft.supercell_defect_q0.code",
             valid_type=orm.Code,
@@ -128,10 +128,11 @@ class FormationEnergyWorkchainSIESTA(FormationEnergyWorkchainBase):
                 if_(cls.correction_required)(
                     if_(cls.is_gaussian_scheme)(
                         cls.raise_not_implemented
-                        )).else_(
-                        cls.check_dft_calcs,
-                        cls.compute_neutral_formation_energy,
-                        cls.compute_charged_formation_energy_no_corre))
+                        )))
+                        #)).else_(
+                        #cls.check_dft_calcs,
+                        #cls.compute_neutral_formation_energy,
+                        #cls.compute_charged_formation_energy_no_corre))
                 #if_(cls.is_none_scheme)(
                 #    cls.check_dft_calcs,
                 #    cls.compute_no_corrected_formation_energy))    
