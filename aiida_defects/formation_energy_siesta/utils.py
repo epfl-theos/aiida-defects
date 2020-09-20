@@ -17,6 +17,25 @@ def get_vbm(calc_node):
 
     return vbm
 
+
+#@calcfunction
+def get_vbm_siesta(calc_node):
+    """
+    Calculating valence band maximum from siesta calculations"
+    """
+    import sisl
+    
+    EIG = sisl.get_sile(calc_node.outputs.remote_folder.get_remote_path()+"/aiida.EIG") 
+    
+    N_electron = int(EIG.file.read_text().split()[3]) 
+    vb_index = int(N_electron/2)-1
+
+    eig_gamma=EIG.read_data()[0][0]
+    
+    vbm = np.amax(eig_gamma[vb_index])
+
+    return vbm
+
 def run_pw_calculation(pw_inputs, structure, charge):
     """
     Run a QuantumESPRESSO PW.x calculation by invoking the appropriate workchain.
@@ -57,7 +76,8 @@ def get_raw_formation_energy(defect_energy, host_energy, add_or_remove, chemical
     """
     Compute the formation energy without correction
     """
-    sign_of_mu = {'add': +1.0, 'remove': -1.0}
+    # adding none
+    sign_of_mu = {'add': +1.0, 'remove': -1.0, 'none' : 0.0}
     e_f_uncorrected = defect_energy - host_energy - sign_of_mu[add_or_remove.value]*chemical_potential + (
         charge * (valence_band_maximum + fermi_energy))
     return e_f_uncorrected

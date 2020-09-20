@@ -32,16 +32,20 @@ class PotentialAlignmentWorkchain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(PotentialAlignmentWorkchain, cls).define(spec)
+        
+        #spec.input('first_potential', valid_type = orm.ArrayData)
+        #spec.input('second_potential', valid_type = orm.ArrayData)
+        
         spec.input('allow_interpolation',
-            valid_type=orm.Bool,
-            default=orm.Bool(False),
-            help="Whether to allow arrays of different shapes to be interpolated")
+                    valid_type = orm.Bool,
+                    default = orm.Bool(False),
+                    help = "Whether to allow arrays of different shapes to be interpolated")
         spec.expose_inputs(DensityWeightedAlignmentWorkchain,
-            namespace='density_weighted',
-            namespace_options={'required': False, 'populate_defaults': False})
+                           namespace = 'density_weighted',
+                           namespace_options = {'required': False, 'populate_defaults': False})
         spec.expose_inputs(LanyZungerAlignmentWorkchain,
-            namespace='lany_zunger',
-            namespace_options={'required': False, 'populate_defaults': False})
+                           namespace='lany_zunger',
+                           namespace_options={'required': False, 'populate_defaults': False})
 
         spec.outline(
             cls.setup,
@@ -77,7 +81,7 @@ class PotentialAlignmentWorkchain(WorkChain):
         """
         Input validation and context setup
         """
-
+        self.report("DEBUG: Setup...")
         # Only one namespace should be used at a time, and only one
         schemes_found = []
         for namespace in valid_schemes:
@@ -103,6 +107,7 @@ class PotentialAlignmentWorkchain(WorkChain):
             'first_potential': inputs.first_potential,
             'second_potential': inputs.second_potential
         }
+        
         if 'charge_density' in inputs: # density-weighted case
             arrays['charge_density'] = inputs.charge_density
 
@@ -150,6 +155,13 @@ class PotentialAlignmentWorkchain(WorkChain):
         """
         Return wether interpolation of the input arrays is needed due to their sizes being mismatched
         """
+        if self.ctx.interpolation_required:
+            self.report("Interpolation Required!")
+        else:
+            self.report("Interpolation Not Required!")
+            interpolated_arrays = {}
+            self.ctx.interpolated_arrays = self.ctx.arrays
+
         return self.ctx.interpolation_required
 
 
@@ -194,7 +206,9 @@ class PotentialAlignmentWorkchain(WorkChain):
 
         workchain_future = self.submit(alignment_workchain, **inputs)
         self.to_context(**{'alignment_wc': workchain_future})
+        
 
+        self.report("Alignment DONE!")
         return
 
 
@@ -203,7 +217,7 @@ class PotentialAlignmentWorkchain(WorkChain):
         Check if the model potential alignment workchain have finished correctly.
         If yes, assign the outputs to the context
         """
-
+        self.report("Checking Alignment...")
         alignment_workchain = self.ctx['alignment_wc']
 
         if not alignment_workchain.is_finished_ok:
@@ -222,3 +236,4 @@ class PotentialAlignmentWorkchain(WorkChain):
             "Completed alignment. An alignment of {} eV is required".format(
                 self.ctx.alignment.value * hartree_to_ev/2.0 ))
         self.out('alignment_required', self.ctx.alignment)
+        self.report("Alignment WorkChain Finished Successfully")
