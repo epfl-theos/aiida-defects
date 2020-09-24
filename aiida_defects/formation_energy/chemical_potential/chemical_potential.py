@@ -23,18 +23,10 @@ class ChemicalPotentialWorkchain(WorkChain):
     of that compound.
     Here we implement method similar to Buckeridge et al., (https://doi.org/10.1016/j.cpc.2013.08.026),
     """
-    ref_energy = {'Li':-195.51408, 'Na': -1294.781, 'K': -1515.34028, 'Rb': -665.48096, 'Cs': -855.71637,
-		'Be':-382.31135, 'Mg':-445.18254, 'Ca': -1018.30809, 'Sr': -953.20309, 'Ba': -5846.81333,
-		'Zn':-6275.54609, 'Cd': -1654.6221, 'Hg': -4220.15135,
-		'Sc': -1248.9897, 'Y': -1260.65816, 'La': -6144.92827,
-		'Ti': -1621.05852, 'Zr':-1348.75011, 'Hf': -1534.22174, 'Ce': -6467.05434,
-		'V': -1972.58745, 'Ta':-1928.66788, 'Nb': -4490.36915, 'Mo':-1865.95416, 'W': -2163.94756,
-		'B':-86.50025, 'Al': -524.03435, 'Ga': -3741.75933, 'In': -1964.75235,
-                'C':-246.491433, 'Si':-154.27445, 'Ge': -2900.6119, 'Sn':-2162.23795, 'Pb': -11693.19885,
-                'N': -274.00734, 'P':-191.03878, 'As': -247.16661, 'Sb': -2511.63434, 'Bi': -2516.86824,
-                'O':-557.49850, 'S':-326.67885, 'Se': -589.11981, 'Te': -359.67088,
-                'F': -657.89303, 'Cl':-451.66500, 'Br': -551.1849, 'I': -5073.88094
-                }
+#    ref_energy = {'Li':-195.51408, 'P':-191.03878, 'O':-557.49850, 'S':-326.67885, 'Cl':-451.66500, 'B':-86.50025, 'Zn':-6275.54609, 
+#            'Mg':-445.18254, 'Ta':-1928.66788, 'Zr':-1348.75011, 'Sn':-2162.23795, 'Mo':-1865.95416, 'Ta':-1928.66325, 'Be':-382.31135,
+#            'C':-246.491433, 'Si':-154.27445, 'Na': -1294.781, 'K': -1515.34028, 'Rb': -665.48096, 'Cs': -855.71637, 'Ca': -1018.30809, 
+#            'Sr': -953.20309, 'Ba': -5846.81333}
     @classmethod
     def define(cls, spec):
         super(ChemicalPotentialWorkchain, cls).define(spec)
@@ -42,7 +34,7 @@ class ChemicalPotentialWorkchain(WorkChain):
         spec.input("compound", valid_type=Str)
         spec.input("dependent_element", valid_type=Str)
         spec.input("defect_specie", valid_type=Str)
-        #spec.input("ref_energy", valid_type=Float)
+        spec.input("ref_energy", valid_type=Dict, help="The reference chemical potential of elements in the structure")
         spec.input("tolerance", valid_type=Float)
 
         spec.outline(
@@ -152,20 +144,16 @@ class ChemicalPotentialWorkchain(WorkChain):
         check_constraint = (get_constraint - np.reshape(matrix_eqns[:,-1] ,(1, matrix_eqns.shape[0]))) <= self.inputs.tolerance.value
         bool_mask = [not(False in x) for x in check_constraint]
         corners_of_stability_region = intersecting_points[bool_mask]
-        #corners_of_stability_region = remove_duplicate(corners_of_stability_region)
+        corners_of_stability_region = remove_duplicate(corners_of_stability_region)
         
         if corners_of_stability_region.size == 0:
             self.report('The stability region cannot be determined. The compound {} is probably unstable'.format(self.inputs.compound.value)) 
             return self.exit_codes.ERROR_CHEMICAL_POTENTIAL_FAILED
 
-        ### compute the corresponding chemical potential of the dependent element
-        with_dependent = (self.ctx.first_eqn[-1]-np.sum(corners_of_stability_region*self.ctx.first_eqn[:-2], axis=1))/self.ctx.first_eqn[-2]
-        corners_of_stability_region = np.hstack((corners_of_stability_region, np.reshape(with_dependent,(len(with_dependent),1))))
-        #print(corners_of_stability_region)
-
         stability_data = ArrayData()
         stability_data.set_array('stability_corners', corners_of_stability_region)
         self.ctx.stability_corners = stability_data
+        self.report('The stability corner is : {}'.format(corners_of_stability_region))
         #self.out("stability_corners", self.ctx.stability_corners)
 
     def get_centroid(self):
@@ -177,14 +165,19 @@ class ChemicalPotentialWorkchain(WorkChain):
 
         stability_corners = self.ctx.stability_corners.get_array('stability_corners')
         M = self.ctx.matrix_eqns.get_array('set_of_constraints')
-        grid = get_grid(stability_corners[:,:-1], M)
-        ctr_stability = get_centroid(grid) #without the dependent element
-        #ctr_stability = np.mean(stability_corners[:,:-1], axis=0) #without the dependent element
-
+        N_specie = M.shape[1]
+        if N_specie == 2:
+            ctr_stability = np.mean(stability_corners, axis=0) #without the dependent element
+        else:
+            #grid = get_grid(stability_corners[:,:-1], M)
+            grid = get_grid(stability_corners, M)
+            ctr_stability = get_centroid(grid) #without the dependent element
+        
         ### Add the corresponding chemical potential of the dependent element
         with_dependent = (self.ctx.first_eqn[-1]-np.sum(ctr_stability*self.ctx.first_eqn[:-2]))/self.ctx.first_eqn[-2]
         centroid_of_stability = np.append(ctr_stability, with_dependent)
         self.report('center of stability is {}'.format(centroid_of_stability))
+
         ctrd = ArrayData()
         ctrd.set_array('data', centroid_of_stability)
         self.ctx.centroid = ctrd
@@ -193,7 +186,8 @@ class ChemicalPotentialWorkchain(WorkChain):
     def chemical_potential(self):
         index = self.ctx.column_order[self.inputs.defect_specie.value]
         #chemical_potential = get_chemical_potential(Float(self.ctx.centroid.get_array('data')[index]), self.inputs.ref_energy)
-        chemical_potential = get_chemical_potential(Float(self.ctx.centroid.get_array('data')[index]), Float(self.ref_energy[self.inputs.defect_specie.value]))
+        chem_ref = self.inputs.ref_energy.get_dict()
+        chemical_potential = get_chemical_potential(Float(self.ctx.centroid.get_array('data')[index]), Float(chem_ref[self.inputs.defect_specie.value]))
         self.ctx.chemical_potential = chemical_potential
         self.out('chemical_potential', chemical_potential)
         self.report('The chemical potential of {} is {}'.format(self.inputs.defect_specie.value, chemical_potential.value))

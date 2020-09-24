@@ -66,29 +66,67 @@ def compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperatu
 
     def electron_concentration(E_Fermi):
         '''
-        compute the concentration of electrons
+        Compute electron concentration
         '''
-
-        E_Fermi = _get_first_element(E_Fermi)
         upper_dos = dos_y[dos_x>=band_gap]
         E_upper = dos_x[dos_x>=band_gap]
-        # plt.plot(E_upper, upper_dos)
+        
+        ndim = E_Fermi.ndim
+        E_Fermi = np.expand_dims(E_Fermi, axis=ndim) # To broadcast with E_upper
         mask_n = ((E_upper-E_Fermi)/(k_B*temperature) < 700.0) # To avoid overflow in the exp
-        temp_n = upper_dos[mask_n]/(np.exp((E_upper[mask_n]-E_Fermi)/(k_B*temperature))+1.0)
-        return input_chem_shape*convert*np.sum(temp_n)*dE/unitcell.volume
+        for i in range(ndim):
+            upper_dos = np.repeat(np.expand_dims(upper_dos, axis=0), E_Fermi.shape[ndim-i-1], axis=0)
+        upper_dos[~mask_n] = 0
+        temp = E_upper-E_Fermi
+        temp[~mask_n] = 0
+        temp_n = upper_dos/(np.exp(temp/(k_B*temperature))+1.0)
+        
+        return convert*np.sum(temp_n, axis=ndim)*dE/unitcell.volume
 
     def hole_concentration(E_Fermi):
         '''
-        compute the concentration of holes
+        Compute hole concentration
         '''
-
-        E_Fermi = _get_first_element(E_Fermi)
         lower_dos = dos_y[dos_x<=0.0]
         E_lower = dos_x[dos_x<=0.0]
-        # plt.plot(E_lower, lower_dos)
+        
+        ndim = E_Fermi.ndim
+        E_Fermi = np.expand_dims(E_Fermi, axis=ndim) # To broadcast with E_lower
         mask_p = ((E_Fermi-E_lower)/(k_B*temperature) < 700.0) # To avoid overflow in the exp
-        temp_p = lower_dos[mask_p]/(np.exp((E_Fermi-E_lower[mask_p])/(k_B*temperature))+1.0)
-        return input_chem_shape*convert*np.sum(temp_p)*dE/unitcell.volume
+        for i in range(ndim):
+            lower_dos = np.repeat(np.expand_dims(lower_dos, axis=0), E_Fermi.shape[ndim-i-1], axis=0)
+        lower_dos[~mask_p] = 0
+        temp = E_Fermi-E_lower
+        temp[~mask_p] = 0
+        temp_p = lower_dos/(np.exp(temp/(k_B*temperature))+1.0)
+        
+        return convert*np.sum(temp_p, axis=ndim)*dE/unitcell.volume
+
+#    def electron_concentration(E_Fermi):
+#        '''
+#        compute the concentration of electrons
+#        '''
+#
+#        E_Fermi = _get_first_element(E_Fermi)
+#        upper_dos = dos_y[dos_x>=band_gap]
+#        E_upper = dos_x[dos_x>=band_gap]
+#        # plt.plot(E_upper, upper_dos)
+#        mask_n = ((E_upper-E_Fermi)/(k_B*temperature) < 700.0) # To avoid overflow in the exp
+#        temp_n = upper_dos[mask_n]/(np.exp((E_upper[mask_n]-E_Fermi)/(k_B*temperature))+1.0)
+#        return input_chem_shape*convert*np.sum(temp_n)*dE/unitcell.volume
+
+#    def hole_concentration(E_Fermi):
+#        '''
+#        compute the concentration of holes
+#        '''
+#
+#        E_Fermi = _get_first_element(E_Fermi)
+#        lower_dos = dos_y[dos_x<=0.0]
+#        E_lower = dos_x[dos_x<=0.0]
+#        # plt.plot(E_lower, lower_dos)
+#        mask_p = ((E_Fermi-E_lower)/(k_B*temperature) < 700.0) # To avoid overflow in the exp
+#        temp_p = lower_dos[mask_p]/(np.exp((E_Fermi-E_lower[mask_p])/(k_B*temperature))+1.0)
+#        return input_chem_shape*convert*np.sum(temp_p)*dE/unitcell.volume
 
     def c_defect(N_site, Ef):
         '''
