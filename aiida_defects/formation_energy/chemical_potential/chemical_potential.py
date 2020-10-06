@@ -23,17 +23,14 @@ class ChemicalPotentialWorkchain(WorkChain):
     of that compound.
     Here we implement method similar to Buckeridge et al., (https://doi.org/10.1016/j.cpc.2013.08.026),
     """
-#    ref_energy = {'Li':-195.51408, 'P':-191.03878, 'O':-557.49850, 'S':-326.67885, 'Cl':-451.66500, 'B':-86.50025, 'Zn':-6275.54609, 
-#            'Mg':-445.18254, 'Ta':-1928.66788, 'Zr':-1348.75011, 'Sn':-2162.23795, 'Mo':-1865.95416, 'Ta':-1928.66325, 'Be':-382.31135,
-#            'C':-246.491433, 'Si':-154.27445, 'Na': -1294.781, 'K': -1515.34028, 'Rb': -665.48096, 'Cs': -855.71637, 'Ca': -1018.30809, 
-#            'Sr': -953.20309, 'Ba': -5846.81333}
+
     @classmethod
     def define(cls, spec):
         super(ChemicalPotentialWorkchain, cls).define(spec)
         spec.input("formation_energy_dict", valid_type=Dict)
         spec.input("compound", valid_type=Str)
         spec.input("dependent_element", valid_type=Str)
-        spec.input("defect_specie", valid_type=Str)
+        #spec.input("defect_specie", valid_type=Str)
         spec.input("ref_energy", valid_type=Dict, help="The reference chemical potential of elements in the structure")
         spec.input("tolerance", valid_type=Float)
 
@@ -43,9 +40,9 @@ class ChemicalPotentialWorkchain(WorkChain):
             cls.get_centroid,
             cls.chemical_potential,
         )
-        #spec.output(stability_corners', valid_type=ArrayData)
+        spec.output('stability_corners', valid_type=ArrayData)
         spec.output('matrix_of_constraints', valid_type=ArrayData)
-        spec.output('chemical_potential', valid_type=Float)
+        spec.output('chemical_potential', valid_type=Dict)
 
         spec.exit_code(601, "ERROR_CHEMICAL_POTENTIAL_FAILED",
             message="The stability region can't be determined. The compound is probably unstable"
@@ -112,20 +109,25 @@ class ChemicalPotentialWorkchain(WorkChain):
         eqns[1:,:][mask] = eqns_0
         #print(eqns)
 
-        # Store the matrix of constraint (before removing the depedent-element row) in the database
-        temp_data = ArrayData()
-        temp_data.set_array('data', eqns)
-        set_of_constraints = return_matrix_of_constraint(temp_data)
-        #self.ctx.constraints = set_of_constraints
-        self.out('matrix_of_constraints', set_of_constraints)
+        # Store the matrix of constraint (before removing the depedent-element column) in the database
+        constraints_with_dependent_element = ArrayData()
+        constraints_with_dependent_element.set_array('data', eqns)
 
-        matrix = np.delete(eqns, N_species-1, axis=1)
-        matrix_data = ArrayData()
-        matrix_data.set_array('set_of_constraints', matrix)
+        #set_of_constraints = return_matrix_of_constraint(temp_data)
+        #self.ctx.constraints = set_of_constraints
+        #self.out('matrix_of_constraints', set_of_constraints)
+        #matrix = np.delete(eqns, N_species-1, axis=1)
+        #matrix_data = ArrayData()
+        #matrix_data.set_array('set_of_constraints', matrix)
+
+        # Removing column corresponding to the dependent element from the set of equations correponding to the constraints
+        # that delineate the stability region
+        matrix_data = remove_column_of_dependent_element(constraints_with_dependent_element, Float(N_species))
         self.ctx.matrix_eqns = matrix_data
+        self.out('matrix_of_constraints', matrix_data)
 
     def solve_matrix_of_constraint(self):
-        matrix_eqns = self.ctx.matrix_eqns.get_array('set_of_constraints')
+        matrix_eqns = self.ctx.matrix_eqns.get_array('data')
         N_species = matrix_eqns.shape[1]
 
         ### Look at all combination of lines and find their intersections
@@ -138,7 +140,8 @@ class ChemicalPotentialWorkchain(WorkChain):
             except np.linalg.LinAlgError:
                 ### Singular matrix: lines are parallels therefore don't have any intersection
                 pass
-
+        
+        ### Determine the points that form the 'corners' of stability region. These are intersecting point that verify all the constraints.
         intersecting_points = np.array(intersecting_points)
         get_constraint = np.dot(intersecting_points, matrix_eqns[:,:-1].T)
         check_constraint = (get_constraint - np.reshape(matrix_eqns[:,-1] ,(1, matrix_eqns.shape[0]))) <= self.inputs.tolerance.value
@@ -151,43 +154,49 @@ class ChemicalPotentialWorkchain(WorkChain):
             return self.exit_codes.ERROR_CHEMICAL_POTENTIAL_FAILED
 
         stability_data = ArrayData()
-        stability_data.set_array('stability_corners', corners_of_stability_region)
-        self.ctx.stability_corners = stability_data
-        self.report('The stability corner is : {}'.format(corners_of_stability_region))
-        #self.out("stability_corners", self.ctx.stability_corners)
+        stability_data.set_array('data', corners_of_stability_region)
+        ordered_stability_corners = Order_point_clockwise(stability_data)
+        self.ctx.stability_corners = ordered_stability_corners
+        #self.report('The stability corner is : {}'.format(ordered_stability_corners.get_array('data')))
+        self.out("stability_corners", ordered_stability_corners)
 
     def get_centroid(self):
-        
-        ### Use to determine centroid (as oppose to center). Applicable only in 2D chemical potential map (ternary systems)
-        #stability_corners = Order_point_clockwise(self.ctx.stability_corners.get_array('stability_corners'))
-        #P = Polygon(stability_corners)
-        #centroid_of_stability = np.array([P.centroid.x, P.centroid.y])
-
-        stability_corners = self.ctx.stability_corners.get_array('stability_corners')
-        M = self.ctx.matrix_eqns.get_array('set_of_constraints')
+        '''
+        Use to determine centroid (as oppose to center). The center is defined as the average coordinates of the corners 
+        while a centroid is the average cooridinates of every point inside the polygone or polyhedron.
+        For binary compounds, the stability region is a one-dimensional segment. The centroid coincides with the center.
+        For ternary and quarternary compounds, the centroid is returned.
+        For quinternary compound and hight, the center is returned.
+        '''
+        stability_corners = self.ctx.stability_corners.get_array('data')
+        M = self.ctx.matrix_eqns.get_array('data')
         N_specie = M.shape[1]
         if N_specie == 2:
             ctr_stability = np.mean(stability_corners, axis=0) #without the dependent element
         else:
-            #grid = get_grid(stability_corners[:,:-1], M)
             grid = get_grid(stability_corners, M)
             ctr_stability = get_centroid(grid) #without the dependent element
         
         ### Add the corresponding chemical potential of the dependent element
         with_dependent = (self.ctx.first_eqn[-1]-np.sum(ctr_stability*self.ctx.first_eqn[:-2]))/self.ctx.first_eqn[-2]
         centroid_of_stability = np.append(ctr_stability, with_dependent)
-        self.report('center of stability is {}'.format(centroid_of_stability))
+        self.report('Centroid of the stability region is {}'.format(centroid_of_stability))
 
         ctrd = ArrayData()
         ctrd.set_array('data', centroid_of_stability)
         self.ctx.centroid = ctrd
-        #self.out("centroid", self.ctx.centroid)
 
     def chemical_potential(self):
-        index = self.ctx.column_order[self.inputs.defect_specie.value]
-        #chemical_potential = get_chemical_potential(Float(self.ctx.centroid.get_array('data')[index]), self.inputs.ref_energy)
+        #index = self.ctx.column_order[self.inputs.defect_specie.value]
+        #chem_ref = self.inputs.ref_energy.get_dict()
+        #chemical_potential = get_chemical_potential(Float(self.ctx.centroid.get_array('data')[index]), Float(chem_ref[self.inputs.defect_specie.value]))
+        #self.ctx.chemical_potential = chemical_potential
+        #self.out('chemical_potential', chemical_potential)
+        #self.report('The chemical potential of {} is {}'.format(self.inputs.defect_specie.value, chemical_potential.value))
+
         chem_ref = self.inputs.ref_energy.get_dict()
-        chemical_potential = get_chemical_potential(Float(self.ctx.centroid.get_array('data')[index]), Float(chem_ref[self.inputs.defect_specie.value]))
+        chemical_potential = get_chemical_potential(self.ctx.centroid, self.inputs.ref_energy, self.ctx.column_order)
         self.ctx.chemical_potential = chemical_potential
         self.out('chemical_potential', chemical_potential)
-        self.report('The chemical potential of {} is {}'.format(self.inputs.defect_specie.value, chemical_potential.value))
+        self.report('The chemical potential is {}'.format(str(chemical_potential.get_dict())))
+
