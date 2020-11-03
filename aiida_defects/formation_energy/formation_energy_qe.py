@@ -138,7 +138,6 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         pw_inputs.pseudos = self.inputs.qe.dft.supercell.pseudopotentials
         pw_inputs.kpoints = self.inputs.qe.dft.supercell.kpoints
         pw_inputs.metadata = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
-        pw_inputs.settings = self.inputs.qe.dft.supercell.settings
 
         parameters = self.inputs.qe.dft.supercell.parameters.get_dict()
 
