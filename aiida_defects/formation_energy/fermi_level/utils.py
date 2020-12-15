@@ -13,6 +13,7 @@ from pymatgen.core.composition import Composition
 from aiida.orm import ArrayData, Float
 from pymatgen import Element
 from scipy.optimize import broyden1
+from scipy.optimize.nonlin import NoConvergence
 
 def _get_first_element(x):
     '''
@@ -40,7 +41,7 @@ def compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperatu
                     value at a time but it is much slower than vectorization using numpy
     dopant : aliovalent dopants specified by its charge and concentration with the format {'X_1': {'c':, 'q':}, 'X_2': {'c':, 'q':}, ...}. 
             Used to compute the change in the defect concentrations with 'frozen defect' approach
-    uniticell : is the structure used to compute the Dos not the host supercell used to compute the formation energy
+    uniticell : is the structure used to compute the Dos, NOT the host supercell used to compute the formation energy
     '''
 
     dE = dos_x[1] - dos_x[0]
@@ -56,12 +57,13 @@ def compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperatu
         for defect in defect_data.keys():
             temp = defect_data[defect]
             Ef = {}
-            for chg in temp['charge'].keys():
-                E_formation = temp['charge'][chg]['E']-temp['E_host']+float(chg)*(E_Fermi+temp['vbm'])+temp['charge'][chg]['E_corr']
+            for chg in temp['charges'].keys():
+                E_formation = temp['charges'][chg]['E']-temp['E_host']+float(chg)*(E_Fermi+temp['vbm'])+temp['charges'][chg]['E_corr']
                 for spc in temp['species'].keys():
                     E_formation -= temp['species'][spc]*input_chem_shape*chem_potentials[spc]
                 Ef[chg] = E_formation
             E_defect_formation[defect] = Ef
+        print(E_defect_formation)
         return E_defect_formation
 
     def electron_concentration(E_Fermi):
@@ -132,7 +134,6 @@ def compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperatu
         '''
         compute the concentration of defects having formation energy Ef and can exist in N_sites in the unitcell
         '''
-
         return convert*N_site*np.exp(-1.0*Ef/(k_B*temperature))/unitcell.volume
 
     def Net_charge(E_Fermi):
@@ -148,7 +149,6 @@ def compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperatu
         positive_charge = 0.0
         negative_charge = 0.0
         for key in E_defect_formation.keys():
-            # print(key)
             for chg in E_defect_formation[key]:
                 # print(chg)
                 if float(chg) > 0:
@@ -166,7 +166,7 @@ def compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperatu
     return Net_charge
 
 @calcfunction
-def solve_for_sc_fermi(defect_data, chem_potentials, input_chem_shape, temperature, unitcell, band_gap, dos_x, dos_y, dopant):
+def solve_for_sc_fermi(defect_data, chem_potentials, input_chem_shape, temperature, unitcell, band_gap, dos_x, dos_y, dopant, f_tol):
     '''
     solve the non-linear equation with E_fermi as variable to obtain the self-consistent Fermi level. The non-linear solver broyden1 in
     scipy is used.
@@ -180,9 +180,10 @@ def solve_for_sc_fermi(defect_data, chem_potentials, input_chem_shape, temperatu
     dos_x = dos_x.get_array('data')
     dos_y = dos_y.get_array('data')
     band_gap = band_gap.value
+    tolerance = f_tol.value
 
     net_charge = compute_net_charge(defect_data, chem_potentials, input_chem_shape, temperature, unitcell, band_gap, dos_x, dos_y, dopant)
-    sc_fermi = broyden1(net_charge, input_chem_shape*band_gap/2, f_tol=1e-12)
+    sc_fermi = broyden1(net_charge, input_chem_shape*band_gap/2, f_tol=tolerance)
     v_data = ArrayData()
     v_data.set_array('data', sc_fermi)
     return v_data
