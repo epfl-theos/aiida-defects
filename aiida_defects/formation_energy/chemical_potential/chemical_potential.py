@@ -27,14 +27,21 @@ class ChemicalPotentialWorkchain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(ChemicalPotentialWorkchain, cls).define(spec)
-        spec.input("formation_energy_dict", valid_type=Dict)
-        spec.input("compound", valid_type=Str)
-        spec.input("dependent_element", valid_type=Str)
-        #spec.input("defect_specie", valid_type=Str)
-        spec.input("ref_energy", valid_type=Dict, help="The reference chemical potential of elements in the structure")
-        spec.input("tolerance", valid_type=Float)
+        spec.input("formation_energy_dict", valid_type=Dict,
+            help="The formation energies of all compounds in the phase diagram to which belong the material of interest")
+        spec.input("compound", valid_type=Str,
+            help="The name of the material of interest")
+        spec.input("dependent_element", valid_type=Str,
+            help="In a N-element phase diagram, the chemical potential of depedent_element is fixed by that of the other N-1 elements")
+        spec.input("dopant_elements", valid_type=List, required=False, default=lambda: List(list=[]),
+            help="The aliovalent dopants that might be introduce into the prestine material. Several dopants might be present in co-doping scenario.")
+        spec.input("ref_energy", valid_type=Dict, 
+            help="The reference chemical potential of elements in the structure")
+        spec.input("tolerance", valid_type=Float, default=lambda: Float(1E-4),
+            help="Use to determine if a point in the chemical potential space is a corner of the stability region or not")
 
         spec.outline(
+            cls.setup,
             cls.set_matrix_of_constraint,
             cls.solve_matrix_of_constraint,
             cls.get_centroid,
@@ -47,20 +54,50 @@ class ChemicalPotentialWorkchain(WorkChain):
         spec.exit_code(601, "ERROR_CHEMICAL_POTENTIAL_FAILED",
             message="The stability region can't be determined. The compound is probably unstable"
         )
+        spec.exit_code(602, "ERROR_INVALID_DEPENDENT_ELEMENT",
+            message="In the case of aliovalent substitution, the dopant element has to be different from dependent element."
+        )
+    
+    def setup(self):
+        if self.inputs.dependent_element.value in self.inputs.dopant_elements.get_list():
+            self.report('In the case of aliovalent substitution, the dopant element has to be different from dependent element. Please choose a different dependent element.')
+            return self.exit_codes.ERROR_INVALID_DEPENDENT_ELEMENT
+        
+        composition = Composition(self.inputs.compound.value)
+        element_list = [atom for atom in composition]
+
+        if self.inputs.dopant_elements.get_list(): # check if the list empty
+            element_list += [Element(atom) for atom in self.inputs.dopant_elements.get_list()]  # List concatenation
+            N_species = len(composition) + len(self.inputs.dopant_elements.get_list())
+        else:
+            N_species = len(composition)
+        
+        self.ctx.element_list = element_list
+        self.ctx.N_species = N_species
+        formation_energy_dict = self.inputs.formation_energy_dict.get_dict()
+        
+        # check if the compound is stable or not. If not shift its energy down to put it on the convex hull and issue a warning.
+        E_hull = get_e_above_hull(self.inputs.compound.value, element_list, formation_energy_dict)
+        if E_hull > 0:
+            self.report('WARNING! The compound {} is predicted to be unstable. For the purpose of determining the stability region, we shift its formation energy down so that it is on the convex hull. Use with care!'.format(self.inputs.compound.value))
+            formation_energy_dict[self.inputs.compound.value] -= composition.num_atoms*(E_hull+0.005) # the factor 0.005 is added for numerical reason
+        
+        self.ctx.formation_energy_dict = Dict(dict=formation_energy_dict)
 
     def set_matrix_of_constraint(self):
         compound_of_interest = Composition(self.inputs.compound.value)
-        N_species = len(compound_of_interest)
-        N_competing_phases = len(self.inputs.formation_energy_dict.get_dict()) - 1
+        N_competing_phases = len(self.ctx.formation_energy_dict.get_dict()) - 1
+        N_species = self.ctx.N_species
 
         column_order = {} # To track which element corresponds to each column, the dependent element is always the last column
         i = 0
-        for ele in compound_of_interest:
+        for ele in self.ctx.element_list:
             if ele.symbol != self.inputs.dependent_element.value:
                 column_order[ele.symbol] = i
                 i += 1
-        column_order[self.inputs.dependent_element.value] = N_species - 1
+        column_order[self.inputs.dependent_element.value] = self.ctx.N_species - 1
         self.ctx.column_order = Dict(dict=column_order)
+        #self.report('Column order: {}'.format(column_order))
 
         ##############################################################################
         # Construct matrix containing all linear equations. The last column is the rhs 
@@ -71,19 +108,19 @@ class ChemicalPotentialWorkchain(WorkChain):
         eqns = np.zeros(N_species+1)
         for ele in compound_of_interest:
                 eqns[column_order[ele.symbol]] = -1.0*compound_of_interest[ele]
-        eqns[N_species] = -1.0*self.inputs.formation_energy_dict.get_dict()[self.inputs.compound.value]
+        eqns[N_species] = -1.0*self.ctx.formation_energy_dict.get_dict()[self.inputs.compound.value]
         self.ctx.first_eqn = eqns
-        #print(eqns)
+        #self.report('The first equation is :{}'.format(eqns))
 
         # Now loop through all the competing phases
-        for key in self.inputs.formation_energy_dict.keys():
+        for key in self.ctx.formation_energy_dict.keys():
             # if key != compound:
             if not same_composition(key, self.inputs.compound.value):
                 tmp = np.zeros(N_species+1)
                 temp_composition = Composition(key)
                 for ele in temp_composition:
                     tmp[column_order[ele.symbol]] = temp_composition[ele]
-                tmp[N_species] = self.inputs.formation_energy_dict.get_dict()[key]
+                tmp[N_species] = self.ctx.formation_energy_dict.get_dict()[key]
                 eqns = np.vstack((eqns, tmp))
         #print(eqns)
 
@@ -96,7 +133,7 @@ class ChemicalPotentialWorkchain(WorkChain):
                 eqns = np.vstack((eqns, tmp))
                 tmp = np.zeros(N_species+1)
                 tmp[column_order[ele.symbol]] = -1.0
-                tmp[N_species] = -1.*self.inputs.formation_energy_dict.get_dict()[self.inputs.compound.value]/compound_of_interest[ele]
+                tmp[N_species] = -1.*self.ctx.formation_energy_dict.get_dict()[self.inputs.compound.value]/compound_of_interest[ele]
                 eqns = np.vstack((eqns, tmp))
         #print(eqns)
 
@@ -122,16 +159,16 @@ class ChemicalPotentialWorkchain(WorkChain):
 
         # Removing column corresponding to the dependent element from the set of equations correponding to the constraints
         # that delineate the stability region
-        matrix_data = remove_column_of_dependent_element(constraints_with_dependent_element, Float(N_species))
+        matrix_data = remove_column_of_dependent_element(constraints_with_dependent_element, Int(N_species))
         self.ctx.matrix_eqns = matrix_data
         self.out('matrix_of_constraints', matrix_data)
 
     def solve_matrix_of_constraint(self):
         matrix_eqns = self.ctx.matrix_eqns.get_array('data')
-        N_species = matrix_eqns.shape[1]
+        #N_species = matrix_eqns.shape[1]
 
         ### Look at all combination of lines and find their intersections
-        comb = combinations(np.arange(np.shape(matrix_eqns)[0]), N_species-1)
+        comb = combinations(np.arange(np.shape(matrix_eqns)[0]), self.ctx.N_species-1)
         intersecting_points = []
         for item in list(comb):
             try:
@@ -170,8 +207,8 @@ class ChemicalPotentialWorkchain(WorkChain):
         '''
         stability_corners = self.ctx.stability_corners.get_array('data')
         M = self.ctx.matrix_eqns.get_array('data')
-        N_specie = M.shape[1]
-        if N_specie == 2:
+        #N_specie = M.shape[1]
+        if self.ctx.N_species == 2:
             ctr_stability = np.mean(stability_corners, axis=0) #without the dependent element
         else:
             grid = get_grid(stability_corners, M)
@@ -187,13 +224,6 @@ class ChemicalPotentialWorkchain(WorkChain):
         self.ctx.centroid = ctrd
 
     def chemical_potential(self):
-        #index = self.ctx.column_order[self.inputs.defect_specie.value]
-        #chem_ref = self.inputs.ref_energy.get_dict()
-        #chemical_potential = get_chemical_potential(Float(self.ctx.centroid.get_array('data')[index]), Float(chem_ref[self.inputs.defect_specie.value]))
-        #self.ctx.chemical_potential = chemical_potential
-        #self.out('chemical_potential', chemical_potential)
-        #self.report('The chemical potential of {} is {}'.format(self.inputs.defect_specie.value, chemical_potential.value))
-
         chem_ref = self.inputs.ref_energy.get_dict()
         chemical_potential = get_chemical_potential(self.ctx.centroid, self.inputs.ref_energy, self.ctx.column_order)
         self.ctx.chemical_potential = chemical_potential
