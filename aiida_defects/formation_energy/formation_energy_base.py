@@ -54,9 +54,9 @@ class FormationEnergyWorkchainBase(WorkChain):
              "defect_charge",
              valid_type=orm.Float,
              help="Defect charge state")
-        spec.input(
-            "defect_specie",
-            valid_type=orm.Str)
+#        spec.input(
+#            "defect_specie",
+#            valid_type=orm.Str)
         spec.input(
             "defect_site",
             valid_type=orm.List,
@@ -67,20 +67,20 @@ class FormationEnergyWorkchainBase(WorkChain):
              valid_type=orm.Float,
              default=lambda: orm.Float(0.0),
              help="Fermi level position with respect to the valence band maximum")
-        # spec.input(
-        #     "chemical_potential",
-        #     valid_type=orm.Float,
-        #     help="The chemical potential of the given defect type. The convention is that removing an atom is positive",
-        # )
-        spec.input("add_or_remove", valid_type=orm.Str,
+        spec.input(
+             "chemical_potential",
+             valid_type=orm.Dict,
+             help="The chemical potential of the given defect type. The convention is that removing an atom is positive")
+        spec.input("chempot_sign", valid_type=orm.Dict,
                 help="To determine the sign of the chemical potential. The convention is that removing an atom is negative")
 
         # Chemical potential
-        spec.input('formation_energy_dict', valid_type=orm.Dict)
-        spec.input('compound', valid_type=orm.Str)
-        spec.input('dependent_element', valid_type=orm.Str)
-        spec.input('tolerance', valid_type=orm.Float, default=lambda: orm.Float(1E-4))
-
+        #spec.input('formation_energy_dict', valid_type=orm.Dict)
+        #spec.input('compound', valid_type=orm.Str)
+        #spec.input('dependent_element', valid_type=orm.Str)
+        #spec.input("ref_energy", valid_type=Dict, help="The reference chemical potential of elements in the structure")
+        #spec.input('tolerance', valid_type=orm.Float, default=lambda: orm.Float(1E-4))
+        spec.input('sigma', valid_type=orm.Float)
 
         spec.input("run_dfpt", valid_type=orm.Bool)
 
@@ -90,6 +90,8 @@ class FormationEnergyWorkchainBase(WorkChain):
             valid_type=orm.Str,
             help="The correction scheme to apply",
         )
+        spec.input("cutoff", valid_type=orm.Float)
+
 
         # Outputs
         spec.output(
@@ -198,6 +200,8 @@ class FormationEnergyWorkchainBase(WorkChain):
             "defect_site": self.inputs.defect_site,
             "host_structure": self.inputs.host_structure,
             "epsilon": self.ctx.epsilon,
+            "sigma" : self.inputs.sigma,
+            "cutoff" : self.inputs.cutoff,
         }
 
         workchain_future = self.submit(GaussianCounterChargeWorkchain, **inputs)
@@ -285,7 +289,7 @@ class FormationEnergyWorkchainBase(WorkChain):
             #return self.exit_codes.ERROR_SUB_PROCESS_FAILED_CORRECTION
         else:
             self.ctx.chemical_potential = chem_potential_wc.outputs.chemical_potential
-
+            
     def compute_formation_energy(self):
         """
         Compute the formation energy
@@ -294,8 +298,8 @@ class FormationEnergyWorkchainBase(WorkChain):
         self.ctx.e_f_uncorrected = get_raw_formation_energy(
             self.ctx.defect_energy,
             self.ctx.host_energy,
-            self.inputs.add_or_remove,
-            self.ctx.chemical_potential,
+            self.inputs.chempot_sign,
+            self.inputs.chemical_potential,
             self.inputs.defect_charge,
             self.inputs.fermi_level,
             self.ctx.host_vbm
