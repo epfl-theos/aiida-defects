@@ -9,7 +9,7 @@ from __future__ import absolute_import
 
 from aiida.engine import WorkChain, calcfunction, ToContext, while_
 from aiida import orm
-from qe_tools.constants import hartree_to_ev
+#from qe_tools.constants import hartree_to_ev
 
 from aiida_defects.formation_energy.potential_alignment.potential_alignment import PotentialAlignmentWorkchain
 from .model_potential.model_potential import ModelPotentialWorkchain
@@ -43,11 +43,11 @@ class GaussianCounterChargeWorkchain(WorkChain):
             help="Dielectric constant for the host material.")
         spec.input("model_iterations_required",
             valid_type=orm.Int,
-            default=orm.Int(3),
+            default=lambda: orm.Int(3),
             help="The number of model charge systems to compute. More may improve convergence.")
         spec.input("cutoff",
             valid_type=orm.Float,
-            default=orm.Float(40.),
+            default=lambda: orm.Float(100.),
             help="Plane wave cutoff for electrostatic model.")
         spec.input("v_host",
             valid_type=orm.ArrayData,
@@ -58,20 +58,23 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.input("v_defect_q",
             valid_type=orm.ArrayData,
             help="The electrostatic potential of the defect system in the target charge state (in eV).")
-        spec.input("rho_host",
-            valid_type=orm.ArrayData,
-            help="The charge density of the host system.")
-        spec.input("rho_defect_q",
-            valid_type=orm.ArrayData,
-            help="The charge density of the defect system in the target charge state.")
+#        spec.input("rho_host",
+#            valid_type=orm.ArrayData,
+#            help="The charge density of the host system.")
+#        spec.input("rho_defect_q",
+#            valid_type=orm.ArrayData,
+#            help="The charge density of the defect system in the target charge state.")
         spec.input("charge_fit_tolerance",
             valid_type=orm.Float,
             help="Permissable error for any fitted charge model parameter.",
-            default=orm.Float(1.0e-3))
+            default=lambda: orm.Float(1.0e-3))
         spec.input("strict_fit",
             valid_type=orm.Bool,
             help="When true, exit the workchain if a fitting parameter is outside the specified tolerance.",
-            default=orm.Bool(True))
+            default=lambda: orm.Bool(True))
+        spec.input("sigma",
+            valid_type=orm.Float, default=lambda: orm.Float(1.0),
+            help="The spread of the gaussian.")
 
         spec.outline(
             cls.setup,
@@ -163,21 +166,25 @@ class GaussianCounterChargeWorkchain(WorkChain):
         Fit an anisotropic gaussian to the charge state electron density
         """
 
-        fit = get_charge_model_fit(
-            self.inputs.rho_host,
-            self.inputs.rho_defect_q,
-            self.inputs.host_structure)
+#        fit = get_charge_model_fit(
+#            self.inputs.rho_host,
+#            self.inputs.rho_defect_q,
+#            self.inputs.host_structure)
+#        
+#        self.report('fit: {}'.format(fit.get_dict()))
+#
+#        self.ctx.fitted_params = orm.List(list=fit['fit'])
+#        self.ctx.peak_charge = orm.Float(fit['peak_charge'])
+#        
+#        for parameter in fit['error']:
+#            if parameter > self.inputs.charge_fit_tolerance:
+#                self.logger.warning("Charge fitting parameter worse than allowed tolerance")
+#                if self.inputs.strict_fit:
+#                    return self.exit_codes.ERROR_BAD_CHARGE_FIT 
         
-        self.ctx.fitted_params = orm.List(list=fit['fit'])
-        self.ctx.peak_charge = orm.Float(fit['peak_charge'])
-
-        
-        for parameter in fit['error']:
-            if parameter > self.inputs.charge_fit_tolerance:
-                self.logger.warning("Charge fitting parameter worse than allowed tolerance")
-                if self.inputs.strict_fit:
-                    return self.exit_codes.ERROR_BAD_CHARGE_FIT 
-
+        sigma = self.inputs.sigma
+        self.ctx.fitted_params = orm.List(list=self.inputs.defect_site.get_list()+[sigma, sigma, sigma, 0.0, 0.0, 0.0])
+        self.ctx.peak_charge = orm.Float(1.0)
 
     def should_run_model(self):
         """

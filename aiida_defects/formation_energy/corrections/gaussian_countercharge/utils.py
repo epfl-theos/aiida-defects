@@ -11,7 +11,7 @@ import numpy as np
 from aiida import orm
 from aiida.engine import calcfunction
 
-from qe_tools.constants import bohr_to_ang
+#from qe_tools.constants import bohr_to_ang
 
 """
 Utility functions for the gaussian countercharge workchain
