@@ -50,9 +50,9 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         spec.input('run_v_host', valid_type=orm.Bool, required=True)
         spec.input('run_v_defect_q0', valid_type=orm.Bool, required=True)
         spec.input('run_v_defect_q', valid_type=orm.Bool, required=True)
-        spec.input('run_rho_host', valid_type=orm.Bool, required=True)
-        spec.input('run_rho_defect_q0', valid_type=orm.Bool, required=True)
-        spec.input('run_rho_defect_q', valid_type=orm.Bool, required=True)
+#        spec.input('run_rho_host', valid_type=orm.Bool, required=True)
+#        spec.input('run_rho_defect_q0', valid_type=orm.Bool, required=True)
+#        spec.input('run_rho_defect_q', valid_type=orm.Bool, required=True)
         spec.input('run_dfpt', valid_type=orm.Bool, required=True)
 
         spec.input('host_node', valid_type=orm.Int, required=False)
@@ -61,9 +61,9 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         spec.input('v_host_node', valid_type=orm.Int, required=False)
         spec.input('v_defect_q0_node', valid_type=orm.Int, required=False)
         spec.input('v_defect_q_node', valid_type=orm.Int, required=False)
-        spec.input('rho_host_node', valid_type=orm.Int, required=False)
-        spec.input('rho_defect_q0_node', valid_type=orm.Int, required=False)
-        spec.input('rho_defect_q_node', valid_type=orm.Int, required=False)
+#        spec.input('rho_host_node', valid_type=orm.Int, required=False)
+#        spec.input('rho_defect_q0_node', valid_type=orm.Int, required=False)
+#        spec.input('rho_defect_q_node', valid_type=orm.Int, required=False)
         spec.input("epsilon", valid_type=orm.Float, help="Dielectric constant of the host", required=False)
 
         # DFT inputs (PW.x)
@@ -130,8 +130,8 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                     cls.get_dft_potentials_gaussian_correction,
                     cls.check_dft_potentials_gaussian_correction,
                     #cls.get_kohn_sham_potentials,
-                    cls.get_charge_density,
-                    cls.check_charge_density_calculations,
+                    #cls.get_charge_density,
+                    #cls.check_charge_density_calculations,
                     if_(cls.if_run_dfpt)(
                         cls.prep_hostcell_calc_for_dfpt,
                         cls.check_hostcell_calc_for_dfpt,

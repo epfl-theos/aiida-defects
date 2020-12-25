@@ -11,7 +11,7 @@ from aiida.engine import calcfunction
 import numpy as np
 
 def get_vbm(calc_node):
-    N_electron = calc_node.res.number_of_electrons
+    N_electron = calc_node.outputs.output_parameters.get_dict()['number_of_electrons']
     vb_index = int(N_electron/2)-1
     vbm = np.amax(calc_node.outputs.output_band.get_array('bands')[:,vb_index])
 
