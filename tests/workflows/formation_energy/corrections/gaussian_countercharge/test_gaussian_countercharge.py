@@ -8,7 +8,7 @@
 """Tests for the `GaussianCounterChargeWorkchain` class."""
 import pytest
 from aiida.common import AttributeDict
-from aiida.orm import Float, List, Dict, Int
+from aiida.orm import Float, List, Dict, Int, Str
 from aiida_defects.formation_energy.corrections.gaussian_countercharge.gaussian_countercharge import GaussianCounterChargeWorkchain
 
 @pytest.fixture
@@ -30,6 +30,10 @@ def generate_inputs_gaussian_countercharge(generate_structure, generate_array_da
             'v_defect_q' : mock_array,
             'rho_host' : mock_array,
             'rho_defect_q' : mock_array,
+            'charge_model': {
+                'model_type': Str('fitted'),
+                'fitted': {}
+            }
         }
 
         return inputs

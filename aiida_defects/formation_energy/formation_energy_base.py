@@ -10,11 +10,14 @@ from __future__ import absolute_import
 from aiida import orm
 from aiida.engine import WorkChain, calcfunction, ToContext, if_, submit
 
+from .corrections.gaussian_countercharge.gaussian_countercharge import (
+    GaussianCounterChargeWorkchain)
 from .utils import (
     get_raw_formation_energy,
     get_corrected_formation_energy,
-    get_corrected_aligned_formation_energy,
-)
+    get_corrected_aligned_formation_energy)
+
+
 
 class FormationEnergyWorkchainBase(WorkChain):
     """
@@ -85,48 +88,39 @@ class FormationEnergyWorkchainBase(WorkChain):
         spec.input(
             "correction_scheme",
             valid_type=orm.Str,
-            help="The correction scheme to apply",
-        )
+            help="The correction scheme to apply")
+        # Optional parameters to override the gaussian charge model settings
+        spec.expose_inputs(GaussianCounterChargeWorkchain,
+            namespace='gaussian',
+            include=['charge_model'])
 
         # Outputs
         spec.output(
-            "formation_energy_uncorrected", valid_type=orm.Float, required=True
-        )
+            "formation_energy_uncorrected", valid_type=orm.Float, required=True)
         spec.output(
-            "formation_energy_corrected", valid_type=orm.Float, required=True
-        )
+            "formation_energy_corrected", valid_type=orm.Float, required=True)
         spec.output(
-            "formation_energy_corrected_aligned", valid_type=orm.Float, required=True
-        )
+            "formation_energy_corrected_aligned", valid_type=orm.Float, required=True)
 
         # Error codes
         spec.exit_code(201, "ERROR_INVALID_CORRECTION",
-            message="The requested correction scheme is not recognised",
-        )
+            message="The requested correction scheme is not recognised",)
         spec.exit_code(202, "ERROR_PARAMETER_OVERRIDE",
-            message="Input parameter dictionary key cannot be set explicitly",
-        )
+            message="Input parameter dictionary key cannot be set explicitly",)
         spec.exit_code(301, "ERROR_CORRECTION_WORKCHAIN_FAILED",
-            message="The correction scheme sub-workchain failed",
-        )
+            message="The correction scheme sub-workchain failed",)
         spec.exit_code(302, "ERROR_DFT_CALCULATION_FAILED",
-            message="DFT calculation failed",
-        )
+            message="DFT calculation failed",)
         spec.exit_code(303, "ERROR_PP_CALCULATION_FAILED",
-            message="A post-processing calculation failed",
-        )
+            message="A post-processing calculation failed",)
         spec.exit_code(304, "ERROR_DFPT_CALCULATION_FAILED",
-            message="DFPT calculation failed"
-        )
+            message="DFPT calculation failed")
         spec.exit_code(406, "ERROR_CHEMICAL_POTENTIAL_WORKCHAIN_FAILED",
-            message="The chemical potential calculation failed"
-        )
+            message="The chemical potential calculation failed")
         spec.exit_code(500, "ERROR_PARAMETER_OVERRIDE",
-            message="Input parameter dictionary key cannot be set explicitly"
-        )
+            message="Input parameter dictionary key cannot be set explicitly")
         spec.exit_code(999, "ERROR_NOT_IMPLEMENTED",
-            message="The requested method is not yet implemented",
-        )
+            message="The requested method is not yet implemented")
         # fmt: on
 
     def setup(self):
@@ -178,11 +172,16 @@ class FormationEnergyWorkchainBase(WorkChain):
         """
         Run the workchain for the Gaussian Countercharge correction
         """
-        from .corrections.gaussian_countercharge.gaussian_countercharge import (
-            GaussianCounterChargeWorkchain,
-        )
 
         self.report("Computing correction via the Gaussian Countercharge scheme")
+
+        if self.inputs.gaussian.charge_model:
+            charge_model_dict = self.inputs.gaussian.charge_model
+        else:
+            charge_model_dict = {
+                'model_type': Str('fitted'),
+                'fitted': {}
+            }
 
         inputs = {
             "v_host": self.ctx.v_host,
@@ -194,6 +193,7 @@ class FormationEnergyWorkchainBase(WorkChain):
             "defect_site": self.inputs.defect_site,
             "host_structure": self.inputs.host_structure,
             "epsilon": self.ctx.epsilon,
+            'charge_model': charge_model_dict
         }
 
         workchain_future = self.submit(GaussianCounterChargeWorkchain, **inputs)
