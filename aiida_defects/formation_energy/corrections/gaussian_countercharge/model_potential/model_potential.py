@@ -11,7 +11,7 @@ import numpy as np
 
 from aiida import orm
 from aiida.engine import WorkChain, calcfunction, while_
-from qe_tools.constants import bohr_to_ang
+from qe_tools import CONSTANTS
 
 from .utils import (create_model_structure, get_cell_matrix,
                     get_reciprocal_cell, get_reciprocal_grid, get_charge_model,
@@ -88,7 +88,7 @@ class ModelPotentialWorkchain(WorkChain):
         self.ctx.real_cell = get_cell_matrix(self.ctx.model_structure)
         self.ctx.reciprocal_cell = get_reciprocal_cell(self.ctx.real_cell)
         self.report("DEBUG: recip cell: {}".format(self.ctx.reciprocal_cell))
-        limits = np.array(self.ctx.model_structure.cell_lengths) / bohr_to_ang
+        limits = np.array(self.ctx.model_structure.cell_lengths) / CONSTANTS.bohr_to_ang
         self.ctx.limits = orm.List(list=limits.tolist())
 
 

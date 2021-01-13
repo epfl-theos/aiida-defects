@@ -12,7 +12,7 @@ import numpy as np
 from aiida import orm
 from aiida.common import AttributeDict
 from aiida.engine import WorkChain, calcfunction, if_
-from qe_tools.constants import hartree_to_ev
+from qe_tools import CONSTANTS
 
 from .utils import get_interpolation
 from .lany_zunger.lany_zunger import LanyZungerAlignmentWorkchain
@@ -220,5 +220,5 @@ class PotentialAlignmentWorkchain(WorkChain):
         """
         self.report(
             "Completed alignment. An alignment of {} eV is required".format(
-                self.ctx.alignment.value * hartree_to_ev/2.0 ))
+                self.ctx.alignment.value * CONSTANTS.hartree_to_ev/2.0 ))
         self.out('alignment_required', self.ctx.alignment)

@@ -9,7 +9,6 @@ from __future__ import absolute_import
 
 from aiida.engine import WorkChain, calcfunction, ToContext, while_
 from aiida import orm
-from qe_tools.constants import hartree_to_ev
 
 from aiida_defects.formation_energy.potential_alignment.potential_alignment import PotentialAlignmentWorkchain
 from .model_potential.model_potential import ModelPotentialWorkchain

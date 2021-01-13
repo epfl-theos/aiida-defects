@@ -11,11 +11,9 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.stats import multivariate_normal
 
-
 from aiida import orm
 from aiida.engine import calcfunction
-from qe_tools.constants import hartree_to_ev, bohr_to_ang
-
+from qe_tools import CONSTANTS
 
 
 @calcfunction
@@ -45,7 +43,7 @@ def get_cell_matrix(structure):
         3x3 cell matrix array in units of Bohr
 
     """
-    cell_matrix = np.array(structure.cell) / bohr_to_ang  # Angstrom to Bohr
+    cell_matrix = np.array(structure.cell) / CONSTANTS.bohr_to_ang  # Angstrom to Bohr
     return cell_matrix
 
 
@@ -480,6 +478,6 @@ def get_energy(potential, charge_density, cell_matrix):
     potential = potential.get_array('model_potential')
     charge_density = charge_density.get_array('model_charge')
 
-    energy = np.real(0.5 * get_integral(charge_density*potential, cell_matrix) * hartree_to_ev)
+    energy = np.real(0.5 * get_integral(charge_density*potential, cell_matrix) * CONSTANTS.hartree_to_ev)
     return orm.Float(energy)
 
