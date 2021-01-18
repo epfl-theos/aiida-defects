@@ -7,15 +7,153 @@
 ########################################################################################
 from __future__ import absolute_import
 
+from aiida import orm
 from aiida.engine import calcfunction
 import numpy as np
+import pymatgen
+from pymatgen.core.composition import Composition
+from pymatgen.core.sites import PeriodicSite
+from pymatgen.core.periodic_table import Element
+from pymatgen.core.structure import Structure
 
+def generate_defect_structure(host, site_coord, species):
+    '''
+    To create defective structure at the site_coord in the host structure. species specify the type of defect to be created.
+    '''
+    structure = host.get_pymatgen_structure()
+    defect_structure = structure.copy()
+    for atom, sign in species.items():
+        if sign == 1:
+            defect_structure.append(atom, site_coord)
+        else:
+            site_index = find_index_of_site(structure, site_coord)
+            if site_index == None:
+                print('WARNING! the index of the defect site cannot be found')
+            defect_structure.remove_sites([site_index])
+#    defect_structure.to(filename='tempo.cif')
+#    defect_structure =  Structure.from_file('tempo.cif')
+    return orm.StructureData(pymatgen=defect_structure)
+
+def find_index_of_site(structure, site_coord):
+    #structure = host.get_pymatgen_structure()
+    lattice = structure.lattice
+    defect_site = PeriodicSite(Element('Li'), site_coord, lattice) # Li is just a dummy element. Any other element also works
+    for i, site in enumerate(structure):
+        if defect_site.distance(site) < 5E-4:
+            return i
+        
 def get_vbm(calc_node):
+    #N_electron = calc_node.res.number_of_electrons
     N_electron = calc_node.outputs.output_parameters.get_dict()['number_of_electrons']
     vb_index = int(N_electron/2)-1
     vbm = np.amax(calc_node.outputs.output_band.get_array('bands')[:,vb_index])
 
     return vbm
+
+def is_intrinsic_defect(species, compound):
+    """
+    Check if a defect is an intrisic or extrinsic defect
+    """
+    composition = Composition(compound)
+    element_list = [atom.symbol for atom in composition]
+
+    for atom in species.keys():
+        if atom not in element_list:
+            return False
+    return True
+
+def get_dopant(species, compound):
+    """
+    Get the dopant
+    """
+    composition = Composition(compound)
+    element_list = [atom.symbol for atom in composition]
+    for atom in species.keys():
+        if atom not in element_list:
+            return atom
+    return 'intrinsic'
+
+def get_defect_and_charge_from_label(calc_label):
+    spl = calc_label.split('[')
+    defect = spl[0]
+    chg = float(spl[1].split(']')[0])
+    return defect, chg
+
+def defect_formation_energy(defect_data, E_Fermi, chem_potentials, pot_alignments):
+    '''
+    Computing the defec tformation energy with and without electrostatic and potential alignment corrections
+    Note: 'E_corr' in the defect_data contains the total correction, i.e electrostatic and potential alignment 
+    '''
+    # defect_data = defect_data.get_dict()
+    # E_Fermi = E_Fermi.get_array('data')
+    # chem_potentials = chem_potentials.get_dict()
+    # pot_alignments = pot_alignments.get_dict()
+
+    E_defect_formation = {'uncorrected':{}, 'electrostatic': {}, 'electrostatic and alignment': {}}
+    for defect, properties in defect_data.items():
+        E_defect_formation['uncorrected'][defect] = {}
+        E_defect_formation['electrostatic'][defect] = {}
+        E_defect_formation['electrostatic and alignment'][defect] = {}
+
+        for chg in properties['charges'].keys():
+            Ef_raw = properties['charges'][chg]['E']-properties['E_host']+float(chg)*(E_Fermi+properties['vbm'])
+            # for spc in properties['species'].keys():
+            #     Ef_raw -= properties['species'][spc]*chem_potentials[spc]
+            for spc, sign in properties['species'].items():
+                Ef_raw -= sign*chem_potentials[spc]
+            Ef_corrected = Ef_raw + properties['charges'][chg]['E_corr']
+
+            E_defect_formation['uncorrected'][defect][str(chg)] = Ef_raw
+            E_defect_formation['electrostatic'][defect][str(chg)] = Ef_corrected - pot_alignments[defect][str(chg)]
+            E_defect_formation['electrostatic and alignment'][defect][str(chg)] = Ef_corrected
+
+    # return orm.Dict(dict=E_defect_formation)
+    return E_defect_formation
+
+@calcfunction
+def get_defect_formation_energy(defect_data, E_Fermi, pot_alignments, chem_potentials, compound):
+
+    defect_data = defect_data.get_dict()
+    #formation_energy_dict = formation_energy_dict.get_dict()
+    E_Fermi = E_Fermi.get_dict()
+    chem_potentials = chem_potentials.get_dict()
+    pot_alignments = pot_alignments.get_dict()
+    compound = compound.value
+
+    intrinsic_defects = {}
+    for defect, properties in defect_data.items():
+        if is_intrinsic_defect(properties['species'], compound):
+            intrinsic_defects[defect] = properties
+
+    defect_Ef = {}
+    for dopant, e_fermi in E_Fermi.items():
+        defect_temp = intrinsic_defects.copy()
+        if dopant != 'intrinsic':
+            for defect, properties in defect_data.items():
+                if dopant in properties['species'].keys():
+                    defect_temp[defect] = properties
+
+        defect_Ef[dopant] = defect_formation_energy(
+                defect_temp, 
+                e_fermi, 
+                chem_potentials[dopant],
+                pot_alignments
+                )
+    
+    return orm.Dict(dict=defect_Ef)
+
+@calcfunction
+def store_dict(data_dict):
+    new_dict = {}
+    for k, v in data_dict.get_dict().items():
+        new_dict[k] = v
+    return orm.Dict(dict=new_dict)
+
+@calcfunction
+def store_dos(DOS):
+    dos_x = DOS.get_x()[1]
+    dos_y = DOS.get_y()[1][1]
+    return DOS
 
 def run_pw_calculation(pw_inputs, structure, charge):
     """
@@ -52,15 +190,18 @@ def run_pw_calculation(pw_inputs, structure, charge):
 
 
 @calcfunction
-def get_raw_formation_energy(defect_energy, host_energy, add_or_remove, chemical_potential,
+def get_raw_formation_energy(defect_energy, host_energy, chempot_sign, chemical_potential,
                              charge, fermi_energy, valence_band_maximum):
     """
     Compute the formation energy without correction
     """
-    sign_of_mu = {'add': +1.0, 'remove': -1.0}
-    e_f_uncorrected = defect_energy - host_energy - sign_of_mu[add_or_remove.value]*chemical_potential + (
-        charge * (valence_band_maximum + fermi_energy))
-    return e_f_uncorrected
+    chempot_sign = chempot_sign.get_dict()
+    chemical_potential = chemical_potential.get_dict()
+    
+    e_f_uncorrected = defect_energy.value - host_energy.value + charge.value*(valence_band_maximum.value + fermi_energy.value) 
+    for specie, sign in chempot_sign.items():
+        e_f_uncorrected -= sign*chemical_potential[specie]
+    return orm.Float(e_f_uncorrected)
 
 
 @calcfunction
