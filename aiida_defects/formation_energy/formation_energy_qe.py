@@ -41,12 +41,12 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             help="Inputs for postprocessing calculations")
 
         # What calculations to run
-        spec.input('run_pw_host', valid_type=orm.Bool, required=True)
+        spec.input('run_pw_host', valid_type=orm.Bool, required=True)  # TODO: Check why these are here - for restarts?
         spec.input('run_pw_defect_q0', valid_type=orm.Bool, required=True)
         spec.input('run_pw_defect_q', valid_type=orm.Bool, required=True)
         spec.input('run_dfpt', valid_type=orm.Bool, required=True)
 
-        spec.input('host_node', valid_type=orm.Int, required=False)
+        spec.input('host_node', valid_type=orm.Int, required=False)  # TODO: Need to look at this if this is intended for passing parent calcs
         spec.input('defect_q0_node', valid_type=orm.Int, required=False)
         spec.input('defect_q_node', valid_type=orm.Int, required=False)
         spec.input("epsilon", valid_type=orm.Float, help="Dielectric constant of the host", required=False)
@@ -60,8 +60,6 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             help="Parameters for the PWSCF calcuations. Some will be set automatically")
         spec.input("qe.dft.supercell.scheduler_options", valid_type=orm.Dict,
             help="Scheduler options for the PW.x calculations")
-        spec.input("qe.dft.supercell.settings", valid_type=orm.Dict,
-            help="Settings for the PW.x calculations")
         spec.input_namespace("qe.dft.supercell.pseudopotentials", valid_type=orm.UpfData, dynamic=True,
             help="The pseudopotential family for use with the code, if required")
 
@@ -74,7 +72,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             help="The k-point grid to use for the calculations")
         spec.input("qe.dft.unitcell.parameters",
             valid_type=orm.Dict,
-            help="Parameters for the PWSCF calcuations. Some will be set automatically")
+            help="Parameters for the PWSCF calculations. Some will be set automatically")
         spec.input("qe.dft.unitcell.scheduler_options",
             valid_type=orm.Dict,
             help="Scheduler options for the PW.x calculations")
@@ -140,7 +138,6 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         pw_inputs.pseudos = self.inputs.qe.dft.supercell.pseudopotentials
         pw_inputs.kpoints = self.inputs.qe.dft.supercell.kpoints
         pw_inputs.metadata = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
-        pw_inputs.settings = self.inputs.qe.dft.supercell.settings
 
         parameters = self.inputs.qe.dft.supercell.parameters.get_dict()
 

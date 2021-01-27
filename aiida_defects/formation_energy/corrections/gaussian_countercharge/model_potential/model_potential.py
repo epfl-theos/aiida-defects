@@ -42,7 +42,7 @@ class ModelPotentialWorkchain(WorkChain):
             help="Defect site position in crystal coordinates")
         spec.input('cutoff', 
             valid_type=orm.Float, 
-            default=orm.Float(40.),
+            default=lambda: orm.Float(40.),
             help="Energy cutoff for grids in Rydberg")
         spec.input('epsilon',
             valid_type=orm.Float,

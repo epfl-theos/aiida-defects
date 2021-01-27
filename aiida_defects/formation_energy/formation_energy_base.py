@@ -55,7 +55,7 @@ class FormationEnergyWorkchainBase(WorkChain):
              valid_type=orm.Float,
              help="Defect charge state")
         spec.input(
-            "defect_specie",
+            "defect_species",
             valid_type=orm.Str)
         spec.input(
             "defect_site",
@@ -75,14 +75,11 @@ class FormationEnergyWorkchainBase(WorkChain):
         spec.input("add_or_remove", valid_type=orm.Str,
                 help="To determine the sign of the chemical potential. The convention is that removing an atom is negative")
 
-        # Chemical potential
+        # Chemical potential  # TODO: Doc all of this
         spec.input('formation_energy_dict', valid_type=orm.Dict)
         spec.input('compound', valid_type=orm.Str)
         spec.input('dependent_element', valid_type=orm.Str)
         spec.input('tolerance', valid_type=orm.Float, default=lambda: orm.Float(1E-4))
-
-
-        spec.input("run_dfpt", valid_type=orm.Bool)
 
         # Methodology
         spec.input(
