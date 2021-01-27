@@ -1,7 +1,7 @@
 {
     "name": "aiida-defects",
-    "version": "0.6.0",
-    "author": "Conrad Johnston, Chiara Ricca",
+    "version": "0.9.0",
+    "author": "Conrad Johnston, Sokseiha Muy, Chiara Ricca",
     "author_email": "conrad.s.johnston@googlemail.com",
     "url": "https://github.com/ConradJohnston/aiida-defects/",
     "license": "MIT License",
@@ -16,6 +16,7 @@
     "entry_points": {
         "aiida.workflows": [
             "defects.formation_energy.qe = aiida_defects.formation_energy.formation_energy_qe:FormationEnergyWorkchainQE",
+            "defects.formation_energy.siesta = aiida_defects.formation_energy.formation_energy_siesta:FormationEnergyWorkchainSiesta",
             "defects.formation_energy.corrections.gaussian_countercharge = aiida_defects.formation_energy.corrections.gaussian_countercharge.gaussian_countercharge:GaussianCounterChargeWorkchain",
             "defects.formation_energy.corrections.gaussian_countercharge.model_potential = aiida_defects.formation_energy.corrections.gaussian_countercharge.model_potential.model_potential:ModelPotentialWorkchain",
             "defects.formation_energy.corrections.point_countercharge = aiida_defects.formation_energy.corrections.point_countercharge.point_countercharge:PointCounterChargeWorkchain",
@@ -28,20 +29,24 @@
     "reentry_register": true,
     "install_requires": [
         "aiida-core >= 1.0.0b1,<2.0.0",
-        "aiida-quantumespresso>3.0.0a1",
+        "aiida-quantumespresso>='3.1.0'",
         "pymatgen",
         "six"
     ],
     "extras_require": {
         "dev_precommit": [
             "pre-commit",
+<<<<<<< HEAD
+            "pylint==2.2.2; python_version>='3.0'",
+=======
+>>>>>>> siesta-dev
             "prospector==1.1.5",
             "pep8-naming==0.4.1",
             "modernize==0.7"
-        ], 
+        ],
         "docs": [
-            "Sphinx", 
-            "docutils", 
+            "Sphinx",
+            "docutils",
             "sphinx_rtd_theme"
         ],
         "testing": [

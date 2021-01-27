@@ -43,11 +43,11 @@ class GaussianCounterChargeWorkchain(WorkChain):
             help="Dielectric constant for the host material.")
         spec.input("model_iterations_required",
             valid_type=orm.Int,
-            default=orm.Int(3),
+            default=lambda: orm.Int(3),
             help="The number of model charge systems to compute. More may improve convergence.")
         spec.input("cutoff",
             valid_type=orm.Float,
-            default=orm.Float(40.),
+            default=lambda: orm.Float(40.),
             help="Plane wave cutoff for electrostatic model.")
         spec.input("v_host",
             valid_type=orm.ArrayData,
@@ -67,11 +67,11 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.input("charge_fit_tolerance",
             valid_type=orm.Float,
             help="Permissable error for any fitted charge model parameter.",
-            default=orm.Float(1.0e-3))
+            default=lambda: orm.Float(1.0e-3))
         spec.input("strict_fit",
             valid_type=orm.Bool,
             help="When true, exit the workchain if a fitting parameter is outside the specified tolerance.",
-            default=orm.Bool(True))
+            default=lambda: orm.Bool(True))
 
         spec.outline(
             cls.setup,
@@ -159,7 +159,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
 
     def fit_charge_model(self):
-        """ 
+        """
         Fit an anisotropic gaussian to the charge state electron density
         """
 
@@ -167,16 +167,15 @@ class GaussianCounterChargeWorkchain(WorkChain):
             self.inputs.rho_host,
             self.inputs.rho_defect_q,
             self.inputs.host_structure)
-        
+
         self.ctx.fitted_params = orm.List(list=fit['fit'])
         self.ctx.peak_charge = orm.Float(fit['peak_charge'])
 
-        
         for parameter in fit['error']:
             if parameter > self.inputs.charge_fit_tolerance:
                 self.logger.warning("Charge fitting parameter worse than allowed tolerance")
                 if self.inputs.strict_fit:
-                    return self.exit_codes.ERROR_BAD_CHARGE_FIT 
+                    return self.exit_codes.ERROR_BAD_CHARGE_FIT
 
 
     def should_run_model(self):
