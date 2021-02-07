@@ -48,7 +48,7 @@ def get_alignment(potential_difference, defect_site, cutoff_radius=0.5):
         potential_difference.get_arraynames()[0])
 
     # Generate a crystal grid of the same dimension as the data
-    ijk_array = get_grid(v_diff.shape)
+    ijk_array = get_grid(v_diff.shape, endpoint=False)
     # Compute the distance from the defect site to every other.
     distance_vectors = np.array(defect_site).reshape(3,1) - ijk_array
     # Apply minimum image
