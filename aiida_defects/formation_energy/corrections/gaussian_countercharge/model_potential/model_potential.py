@@ -25,23 +25,23 @@ class ModelPotentialWorkchain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(ModelPotentialWorkchain, cls).define(spec)
-        spec.input('peak_charge', 
+        spec.input('peak_charge',
             valid_type=orm.Float,
             help="Peak charge of the defect charge density distribution")
-        spec.input("defect_charge", 
+        spec.input("defect_charge",
             valid_type=orm.Float,
             help="The target defect charge state")
-        spec.input('scale_factor', 
+        spec.input('scale_factor',
             valid_type=orm.Int,
             help="Scale factor to apply when constructing the model system")
-        spec.input('host_structure', 
+        spec.input('host_structure',
             valid_type=orm.StructureData,
             help="The unscaled host structure")
         spec.input('defect_site',
             valid_type=orm.List,
             help="Defect site position in crystal coordinates")
-        spec.input('cutoff', 
-            valid_type=orm.Float, 
+        spec.input('cutoff',
+            valid_type=orm.Float,
             default=lambda: orm.Float(40.),
             help="Energy cutoff for grids in Rydberg")
         spec.input('epsilon',

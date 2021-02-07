@@ -312,10 +312,10 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         # Compute the alignment between the defect, in q=0, and the host
         inputs = {
-            "density_weighted":{
+            "mae":{
                 "first_potential": self.inputs.v_defect_q0,
                 "second_potential": self.inputs.v_host,
-                "charge_density": self.ctx.charge_model
+                "defect_site": self.inputs.defect_site
             },
             "allow_interpolation": orm.Bool(True)
         }
@@ -335,7 +335,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             "density_weighted":{
                 "first_potential": self.ctx.v_defect_q_q0,
                 "second_potential": v_model,
-                "charge_density": self.ctx.charge_model
+                'host_structure': self.inputs.host_structure,
             },
             "allow_interpolation": orm.Bool(True)
         }

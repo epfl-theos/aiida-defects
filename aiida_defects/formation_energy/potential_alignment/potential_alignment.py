@@ -17,11 +17,13 @@ from qe_tools import CONSTANTS
 from .utils import get_interpolation
 from .lany_zunger.lany_zunger import LanyZungerAlignmentWorkchain
 from .density_weighted.density_weighted import DensityWeightedAlignmentWorkchain
+from .mae.mae import MaeAlignmentWorkchain
 
 
 valid_schemes = {
     'lany_zunger' : LanyZungerAlignmentWorkchain,
-    'density_weighted': DensityWeightedAlignmentWorkchain
+    'density_weighted': DensityWeightedAlignmentWorkchain,
+    'mae': MaeAlignmentWorkchain
 }
 
 class PotentialAlignmentWorkchain(WorkChain):
@@ -38,6 +40,9 @@ class PotentialAlignmentWorkchain(WorkChain):
             help="Whether to allow arrays of different shapes to be interpolated")
         spec.expose_inputs(DensityWeightedAlignmentWorkchain,
             namespace='density_weighted',
+            namespace_options={'required': False, 'populate_defaults': False})
+        spec.expose_inputs(MaeAlignmentWorkchain,
+            namespace='mae',
             namespace_options={'required': False, 'populate_defaults': False})
         spec.expose_inputs(LanyZungerAlignmentWorkchain,
             namespace='lany_zunger',

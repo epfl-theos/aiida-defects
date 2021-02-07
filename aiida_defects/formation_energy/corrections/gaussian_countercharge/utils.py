@@ -95,7 +95,7 @@ def fit_energies(dimensions_dict, energies_dict):
         AiiDA dictionary of the form: structure : energy
     """
 
-    from scipy.optimize import curve_fit    
+    from scipy.optimize import curve_fit
 
     def fitting_func(x, a, b, c):
         """
