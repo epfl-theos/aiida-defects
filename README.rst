@@ -11,7 +11,7 @@ If you use AiiDA-Defects in your work, please cite:
 
     *paper reference (doi)*
 
-Please also remember to cite the `AiiDA paper <https://doi.org/10.1016/j.commatsci.2015.09.013>`_.
+Please also remember to cite the `AiiDA paper <https://doi.org/10.1038/s41597-020-00638-4>`_.
 
 
 Quick Setup
@@ -35,7 +35,14 @@ To build the local docs, run:
         $ cd docs/
         $ make html
 
-Note: You will need to have ``make`` installed on your operating system.
+Note: You will need to have ``make`` installed on your operating system to compile the documentation
+
+
+Getting Started
+===============
+
+Expample usage of the workchains is documented in the collection of Jupyter notebooks in the ``examples`` directory.
+
 
 
 Acknowledgements
