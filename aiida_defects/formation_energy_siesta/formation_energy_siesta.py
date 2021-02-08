@@ -161,6 +161,7 @@ class FormationEnergyWorkchainSIESTA(FormationEnergyWorkchainBase):
                 #cls.check_dft_calcs,
                 if_(cls.correction_required)(
                     if_(cls.is_gaussian_model_scheme)(
+                        cls.check_dft_no_correction_scheme_calcs,
                         cls.check_dft_potentials_gaussian_correction,
                         cls.run_gaussian_model_correction_workchain,
                         cls.check_gaussian_model_correction_workchain,

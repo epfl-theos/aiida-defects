@@ -36,6 +36,44 @@ def get_vbm_siesta(calc_node):
 
     return vbm
 
+
+def get_vbm_siesta_manual(remote_node,host_label):
+    """
+    Calculating valence band maximum from siesta calculations"
+    """
+    import sisl
+
+    EIG = sisl.get_sile(remote_node.get_remote_path()+"/"+host_label+".EIG")
+
+    N_electron = int(EIG.file.read_text().split()[3])
+    vb_index = int(N_electron/2)-1
+
+    eig_gamma=EIG.read_data()[0][0]
+
+    vbm = np.amax(eig_gamma[vb_index])
+
+    return vbm
+
+def get_vbm_siesta_manual_bands(remote_node,host_label,NE):
+    """
+    Calculating valence band maximum from siesta calculations"
+    """
+    import sisl
+
+    BANDS = sisl.get_sile(remote_node.get_remote_path()+"/"+host_label+".bands")
+
+    #N_electron = int(BANDS.file.read_text().split()[3])
+    N_electron = NE
+    vb_index = int(N_electron/2)-1
+
+    eig_gamma=BANDS.read_data()
+
+    vbm = np.amax(eig_gamma[2][0][0][vb_index])
+    #print(vbm)
+    return vbm
+
+
+
 def run_pw_calculation(pw_inputs, structure, charge):
     """
     Run a QuantumESPRESSO PW.x calculation by invoking the appropriate workchain.
@@ -99,6 +137,38 @@ def get_corrected_aligned_formation_energy(e_f_corrected, alignment):
     """
     e_f_corrected_aligned = e_f_corrected + alignment
     return e_f_corrected_aligned
+
+
+
+#@calcfunction
+def output_energy_manual(Remote_node):
+    """
+    Returns Energy from output.out file
+    """
+    import sisl
+    out = sisl.io.outSileSiesta(Remote_node.get_remote_path()+"/output.out")
+    f=open(out.file)
+    a=f.readlines()
+    for line in range(len(a)):
+        if 'siesta:         Total =' in a[line]:
+            energy = a[line].split()[3]
+            #print 
+    return energy
+
+
+def output_total_electrons_manual(Remote_node):
+    """
+    Return Number of Electrons in System from output.out file 
+    """
+    import sisl
+    out = sisl.io.outSileSiesta(Remote_node.get_remote_path()+"/output.out")
+    f=open(out.file)
+    a=f.readlines()
+    for line in range(len(a)):
+        if 'Total number of electrons:' in a[line]:
+            number_of_electrons = int(float(a[line].split()[4]))
+            #print  (a[line].split())
+    return number_of_electrons
 
 
 # def run_pw_calculation(pw_inputs, charge, run_type, additional_inputs=None):
