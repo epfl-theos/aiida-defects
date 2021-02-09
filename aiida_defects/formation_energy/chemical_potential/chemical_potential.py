@@ -36,7 +36,7 @@ class ChemicalPotentialWorkchain(WorkChain):
         spec.input("dopant_elements", valid_type=List, required=False, default=lambda: List(list=[]),
             help="The aliovalent dopants that might be introduce into the prestine material. Several dopants might be present in co-doping scenario.")
         spec.input("ref_energy", valid_type=Dict, 
-            help="The reference chemical potential of elements in the structure")
+            help="The reference chemical potential of elements in the structure. Format of the dictionary: {'Element_symbol': energy, ...}")
         spec.input("tolerance", valid_type=Float, default=lambda: Float(1E-4),
             help="Use to determine if a point in the chemical potential space is a corner of the stability region or not")
 
@@ -84,10 +84,9 @@ class ChemicalPotentialWorkchain(WorkChain):
         self.ctx.formation_energy_dict = Dict(dict=formation_energy_dict)
 
     def generate_matrix_of_constraints(self):
-        #compound_of_interest = Composition(self.inputs.compound.value)
-        #N_competing_phases = len(self.ctx.formation_energy_dict.get_dict()) - 1
-        #N_species = self.ctx.N_species
-
+        '''
+        Construct the set of constraints given by each compounds in the phase diagram and which delineate the stability region.
+        '''
         column_order = {} # To track which element corresponds to each column, the dependent element is always the last column
         i = 0
         for ele in self.ctx.element_list:
@@ -98,11 +97,7 @@ class ChemicalPotentialWorkchain(WorkChain):
         self.ctx.column_order = Dict(dict=column_order)
         #self.report('Column order: {}'.format(column_order))
 
-        ##############################################################################
-        # Construct matrix containing all linear equations. The last column is the rhs 
-        # of the system of equations
-        ##############################################################################
-        
+        # Construct matrix containing all linear equations. The last column is the rhs of the system of equations
         self.ctx.matrix_eqns = get_matrix_of_constraints(
                                     self.ctx.N_species,
                                     self.inputs.compound,
@@ -113,6 +108,9 @@ class ChemicalPotentialWorkchain(WorkChain):
         self.out('matrix_of_constraints', self.ctx.matrix_eqns)
 
     def solve_matrix_of_constraints(self):
+        '''
+        Solve the system of (linear) constraints to get the coordinates of the corners of polyhedra that delineate the stability region
+        '''
         self.ctx.stability_corners = get_stability_corners(
                                         self.ctx.matrix_eqns, 
                                         self.ctx.N_species, 
@@ -123,6 +121,9 @@ class ChemicalPotentialWorkchain(WorkChain):
         self.out("stability_corners", self.ctx.stability_corners)
 
     def get_chemical_potential(self):
+        '''
+        Compute the centroid of the stability region
+        '''
         centroid = get_center_of_stability(
                         self.inputs.compound, 
                         self.inputs.dependent_element, 
@@ -131,7 +132,8 @@ class ChemicalPotentialWorkchain(WorkChain):
                         self.ctx.matrix_eqns
                         )
         self.report('Centroid of the stability region is {}'.format(centroid.get_array('data')))
-
+        
+        # Recover the absolute chemical potential by adding the energy of the reference elements to centroid 
         self.ctx.chemical_potential = get_chemical_potential(
                                             centroid, 
                                             self.inputs.ref_energy, 

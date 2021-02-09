@@ -54,33 +54,32 @@ class FormationEnergyWorkchainBase(WorkChain):
              "defect_charge",
              valid_type=orm.Float,
              help="Defect charge state")
-#        spec.input(
-#            "defect_specie",
-#            valid_type=orm.Str)
         spec.input(
             "defect_site",
             valid_type=orm.List,
             help="Defect site position in crystal coordinates" )
-        #spec.input('ref_energy',valid_type=orm.Float)
         spec.input(
              "fermi_level",
              valid_type=orm.Float,
              default=lambda: orm.Float(0.0),
              help="Fermi level position with respect to the valence band maximum")
-        spec.input(
-             "chemical_potential",
-             valid_type=orm.Dict,
-             help="The chemical potential of the given defect type. The convention is that removing an atom is positive")
-        spec.input("chempot_sign", valid_type=orm.Dict,
-                help="To determine the sign of the chemical potential. The convention is that removing an atom is negative")
+        spec.input("chempot_sign", 
+            valid_type=orm.Dict,
+            help="To determine the sign of the chemical potential. The convention is that removing an atom is negative")
 
         # Chemical potential
-        #spec.input('formation_energy_dict', valid_type=orm.Dict)
-        #spec.input('compound', valid_type=orm.Str)
-        #spec.input('dependent_element', valid_type=orm.Str)
-        #spec.input("ref_energy", valid_type=Dict, help="The reference chemical potential of elements in the structure")
-        #spec.input('tolerance', valid_type=orm.Float, default=lambda: orm.Float(1E-4))
-        spec.input('sigma', valid_type=orm.Float)
+        spec.input('run_chem_pot_wc', valid_type=orm.Bool, default=lambda: orm.Bool(True))
+        spec.input('formation_energy_dict', valid_type=orm.Dict)
+        spec.input('compound', valid_type=orm.Str)
+        spec.input('dependent_element', valid_type=orm.Str)
+        spec.input("ref_energy", valid_type=orm.Dict, help="The reference chemical potential of elements in the structure")
+        spec.input('tolerance', valid_type=orm.Float, default=lambda: orm.Float(1E-4))
+        spec.input(
+             "chemical_potential",
+             valid_type=orm.Dict, required=False, 
+             help="The chemical potential of the given defect type. The convention is that removing an atom is positive")
+        
+        spec.input('sigma', valid_type=orm.Float, required=False)
 
         spec.input("run_dfpt", valid_type=orm.Bool)
 
@@ -147,6 +146,9 @@ class FormationEnergyWorkchainBase(WorkChain):
 
     def if_run_dfpt(self):
         return self.inputs.run_dfpt
+
+    def if_run_chem_pot_wc(self):
+        return self.inputs.run_chem_pot_wc
 
     def correction_required(self):
         """
@@ -259,13 +261,12 @@ class FormationEnergyWorkchainBase(WorkChain):
         from .chemical_potential.chemical_potential import (
                 ChemicalPotentialWorkchain, )
 
-        self.report('Computing the chemical potential of {}'.format(self.inputs.defect_specie.value))
+        self.report('Submitting the chemical potential workchain')
         inputs = {
             "formation_energy_dict": self.inputs.formation_energy_dict,
             "compound": self.inputs.compound,
             "dependent_element": self.inputs.dependent_element,
-            "defect_specie": self.inputs.defect_specie,
-            #"ref_energy": self.inputs.ref_energy,
+            "ref_energy": self.inputs.ref_energy,
             "tolerance": self.inputs.tolerance,
         }
         workchain_future = self.submit(ChemicalPotentialWorkchain, **inputs)
@@ -277,18 +278,21 @@ class FormationEnergyWorkchainBase(WorkChain):
         Check if the chemical potential workchain have finished correctly.
         If yes, assign the output to context
         """
-
-        chem_potential_wc = self.ctx["chemical_potential_workchain"]
-        if not chem_potential_wc.is_finished_ok:
-            self.report(
-                "Chemical potential workchain failed with status {}".format(
-                    chem_potential_wc.exit_status
+        
+        if self.inputs.run_chem_pot_wc:
+            chem_potential_wc = self.ctx["chemical_potential_workchain"]
+            if not chem_potential_wc.is_finished_ok:
+                self.report(
+                    "Chemical potential workchain failed with status {}".format(
+                        chem_potential_wc.exit_status
+                    )
                 )
-            )
-            return self.exit_codes.ERROR_CHEMICAL_POTENTIAL_WORKCHAIN_FAILED
-            #return self.exit_codes.ERROR_SUB_PROCESS_FAILED_CORRECTION
+                return self.exit_codes.ERROR_CHEMICAL_POTENTIAL_WORKCHAIN_FAILED
+                #return self.exit_codes.ERROR_SUB_PROCESS_FAILED_CORRECTION
+            else:
+                self.ctx.chemical_potential = chem_potential_wc.outputs.chemical_potential
         else:
-            self.ctx.chemical_potential = chem_potential_wc.outputs.chemical_potential
+            self.ctx.chemical_potential = self.inputs.chemical_potential
             
     def compute_formation_energy(self):
         """

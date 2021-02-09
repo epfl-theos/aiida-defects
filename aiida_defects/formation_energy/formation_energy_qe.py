@@ -50,9 +50,9 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         spec.input('run_v_host', valid_type=orm.Bool, required=True)
         spec.input('run_v_defect_q0', valid_type=orm.Bool, required=True)
         spec.input('run_v_defect_q', valid_type=orm.Bool, required=True)
-#        spec.input('run_rho_host', valid_type=orm.Bool, required=True)
-#        spec.input('run_rho_defect_q0', valid_type=orm.Bool, required=True)
-#        spec.input('run_rho_defect_q', valid_type=orm.Bool, required=True)
+        spec.input('run_rho_host', valid_type=orm.Bool, required=True)
+        spec.input('run_rho_defect_q0', valid_type=orm.Bool, required=True)
+        spec.input('run_rho_defect_q', valid_type=orm.Bool, required=True)
         spec.input('run_dfpt', valid_type=orm.Bool, required=True)
 
         spec.input('host_node', valid_type=orm.Int, required=False)
@@ -123,15 +123,18 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
 
         spec.outline(
             cls.setup,
+            if_(cls.if_run_chem_pot_wc)(
+                cls.run_chemical_potential_workchain,
+            ),
+            cls.check_chemical_potential_workchain,
             if_(cls.correction_required)(
                 if_(cls.is_gaussian_scheme)(
                     cls.prep_dft_calcs_gaussian_correction,
                     cls.check_dft_calcs_gaussian_correction,
                     cls.get_dft_potentials_gaussian_correction,
                     cls.check_dft_potentials_gaussian_correction,
-                    #cls.get_kohn_sham_potentials,
-                    #cls.get_charge_density,
-                    #cls.check_charge_density_calculations,
+                    cls.get_charge_density,
+                    cls.check_charge_density_calculations,
                     if_(cls.if_run_dfpt)(
                         cls.prep_hostcell_calc_for_dfpt,
                         cls.check_hostcell_calc_for_dfpt,
@@ -145,8 +148,6 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                     #cls.run_point_correction_workchain),
                 ),
                 cls.check_correction_workchain),
-#            cls.run_chemical_potential_workchain,
-#            cls.check_chemical_potential_workchain,
             cls.compute_formation_energy
         )
 

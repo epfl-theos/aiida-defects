@@ -67,10 +67,6 @@ def get_matrix_of_constraints(N_species, compound, dependent_element, column_ord
     eqns[1:,:][mask] = eqns_0
     #print(eqns)
 
-    # Store the matrix of constraint (before removing the depedent-element column)
-    # constraints_with_dependent_element = ArrayData()
-    # constraints_with_dependent_element.set_array('data', eqns)
-
     # Removing column corresponding to the dependent element from the set of equations correponding to the constraints
     # that delineate the stability region
     matrix = np.delete(eqns, N_species-1, axis=1)
@@ -102,6 +98,7 @@ def get_stability_corners(matrix_eqns, N_species, compound, tolerance):
     check_constraint = (get_constraint - np.reshape(matrix_eqns[:,-1] ,(1, matrix_eqns.shape[0]))) <= tolerance
     bool_mask = [not(False in x) for x in check_constraint]
     corners_of_stability_region = intersecting_points[bool_mask]
+    ### In some cases, we may have several solutions corresponding to the same points. Hence, the remove_duplicate method
     corners_of_stability_region = remove_duplicate(corners_of_stability_region)
 
     if corners_of_stability_region.size == 0:
@@ -150,6 +147,9 @@ def get_center_of_stability(compound, dependent_element, stability_corners, N_sp
 
 
 def get_e_above_hull(compound, element_list, formation_energy_dict):
+    '''
+    Get the energy above the convex hull. When the compound is unstable, e_hull > 0.
+    '''
     composition = Composition(compound)
     mp_entries = []
 
@@ -227,9 +227,8 @@ def get_grid(stability_corners, matrix_eqns, N_point=50, tolerance=1E-4):
 def get_centroid(stability_region):
 	return np.mean(stability_region, axis=0)
 
-@calcfunction
 def Order_point_clockwise(points):
-    points = points.get_array('data')
+#    points = points.get_array('data')
     if len(points[0]) == 1:
         points_order = points
     else:
@@ -240,17 +239,10 @@ def Order_point_clockwise(points):
         t = list(t)
         u = [t.index(element) for element in sort_t]
     points_order = points[u]
-    ordered_points = ArrayData()
-    ordered_points.set_array('data', points_order)
-    return ordered_points
-    #return points_order
-
-@calcfunction
-def remove_column_of_dependent_element(set_of_constraints, N_species):
-    matrix = np.delete(set_of_constraints.get_array('data'), N_species.value-1, axis=1)
-    matrix_data = ArrayData()
-    matrix_data.set_array('data', matrix)
-    return matrix_data
+#    ordered_points = ArrayData()
+#    ordered_points.set_array('data', points_order)
+#    return ordered_points
+    return points_order
 
 @calcfunction
 def get_chemical_potential(centroid, ref_energy, column_order):
