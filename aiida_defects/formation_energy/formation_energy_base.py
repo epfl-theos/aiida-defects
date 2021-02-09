@@ -303,7 +303,7 @@ class FormationEnergyWorkchainBase(WorkChain):
             self.ctx.defect_energy,
             self.ctx.host_energy,
             self.inputs.chempot_sign,
-            self.inputs.chemical_potential,
+            self.ctx.chemical_potential,
             self.inputs.defect_charge,
             self.inputs.fermi_level,
             self.ctx.host_vbm
