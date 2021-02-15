@@ -28,8 +28,6 @@ class GaussianCounterChargeWorkchain(WorkChain):
     def define(cls, spec):
         super(GaussianCounterChargeWorkchain, cls).define(spec)
 
-
-
         spec.input("host_structure",
             valid_type=orm.StructureData,
             help="The structure of the host system.")
@@ -72,9 +70,9 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.input("charge_model.model_type",
             valid_type=orm.Str,
             help="Charge model type: 'fixed' or 'fitted'",
-            default=lambda: orm.Str('fitted'))
+            default=lambda: orm.Str('fixed'))
         # Fixed
-        spec.input_namespace('charge_model.fixed', required=False,
+        spec.input_namespace('charge_model.fixed', required=False, populate_defaults=False,
             help="Inputs for a fixed charge model using a user-specified multivariate gaussian")
         spec.input("charge_model.fixed.gaussian_params",
             valid_type=orm.List,
@@ -82,7 +80,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             "gaussian charge distribution. The format required is "
             "[x0, y0, z0, sigma_x, sigma_y, sigma_z, cov_xy, cov_xz, cov_yz]")
         # Fitted
-        spec.input_namespace('charge_model.fitted', required=False,
+        spec.input_namespace('charge_model.fitted', required=False, populate_defaults=False,
             help="Inputs for a fitted charge model using a multivariate anisotropic gaussian.")
         spec.input("charge_model.fitted.tolerance",
             valid_type=orm.Float,
@@ -165,14 +163,14 @@ class GaussianCounterChargeWorkchain(WorkChain):
         # Check if required charge model namespace is specified
         # TODO: Replace with input ports validator
         if self.ctx.charge_model == 'fitted':
-            if not self.inputs.charge_model.fitted: #Wanted fitted, but no params given
+            if 'fitted' not in self.inputs.charge_model: #Wanted fitted, but no params given
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
-            elif self.inputs.charge_model.fixed: #Wanted fitted, but gave fixed params
+            elif 'fixed' in self.inputs.charge_model: #Wanted fitted, but gave fixed params
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
-        elif self.charge.model == 'fixed':
-            if not self.inputs.charge_model.fixed: #Wanted fixed, but no params given
+        elif self.ctx.charge_model == 'fixed':
+            if 'fixed' not in self.inputs.charge_model: #Wanted fixed, but no params given
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
-            elif self.inputs.charge_model.fitted: #Wanted fixed, but gave fitted params
+            elif 'fitted' in self.inputs.charge_model: #Wanted fixed, but gave fitted params
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
 
         # Track iteration number
@@ -252,13 +250,15 @@ class GaussianCounterChargeWorkchain(WorkChain):
         self.report("Computing model potential for scale factor {}".format(
             scale_factor.value))
 
-        if self.charge_model == 'fitted':
+        if self.ctx.charge_model == 'fitted':
             gaussian_params = self.ctx.fitted_params
+            peak_charge = self.ctx.peak_charge
         else:
             gaussian_params = self.inputs.charge_model.fixed.gaussian_params
+            peak_charge = orm.Float(0.)
 
         inputs = {
-            'peak_charge': self.ctx.peak_charge,
+            'peak_charge': peak_charge,
             'defect_charge': self.inputs.defect_charge,
             'scale_factor': scale_factor,
             'host_structure': self.inputs.host_structure,
@@ -312,12 +312,12 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         # Compute the alignment between the defect, in q=0, and the host
         inputs = {
+            "allow_interpolation": orm.Bool(True),
             "mae":{
                 "first_potential": self.inputs.v_defect_q0,
                 "second_potential": self.inputs.v_host,
                 "defect_site": self.inputs.defect_site
             },
-            "allow_interpolation": orm.Bool(True)
         }
 
         workchain_future = self.submit(PotentialAlignmentWorkchain, **inputs)
@@ -332,12 +332,13 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         # Compute the alignment between the defect DFT difference potential, and the model
         inputs = {
-            "density_weighted":{
+
+            "allow_interpolation": orm.Bool(True),
+            "mae":{
                 "first_potential": self.ctx.v_defect_q_q0,
                 "second_potential": v_model,
-                'host_structure': self.inputs.host_structure,
+                "defect_site": self.inputs.defect_site
             },
-            "allow_interpolation": orm.Bool(True)
         }
         workchain_future = self.submit(PotentialAlignmentWorkchain, **inputs)
         label = 'workchain_alignment_dft_to_model'

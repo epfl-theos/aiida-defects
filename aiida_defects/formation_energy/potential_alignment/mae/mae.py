@@ -32,7 +32,7 @@ class MaeAlignmentWorkchain(WorkChain):
 
     @classmethod
     def define(cls, spec):
-        super(RmsAlignmentWorkchain, cls).define(spec)
+        super(MaeAlignmentWorkchain, cls).define(spec)
         spec.input('first_potential',
             valid_type=orm.ArrayData,
             help="The first electrostatic potential array")

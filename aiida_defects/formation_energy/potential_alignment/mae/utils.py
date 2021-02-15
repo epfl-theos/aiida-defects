@@ -28,7 +28,7 @@ class AllValuesMaskedError(ValueError):
     pass
 
 @calcfunction
-def get_alignment(potential_difference, defect_site, cutoff_radius=0.5):
+def get_alignment(potential_difference, defect_site, cutoff_radius=lambda: orm.Float(0.5)):
     """
     Compute the mean-absolute error potential alignment
 

@@ -25,9 +25,6 @@ class ModelPotentialWorkchain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(ModelPotentialWorkchain, cls).define(spec)
-        spec.input('peak_charge',
-            valid_type=orm.Float,
-            help="Peak charge of the defect charge density distribution")
         spec.input("defect_charge",
             valid_type=orm.Float,
             help="The target defect charge state")
@@ -52,6 +49,10 @@ class ModelPotentialWorkchain(WorkChain):
             help="A length 9 list of parameters needed to construct the "
             "gaussian charge distribution. The format required is "
             "[x0, y0, z0, sigma_x, sigma_y, sigma_z, cov_xy, cov_xz, cov_yz]")
+        spec.input('peak_charge',
+            valid_type=orm.Float,
+            default=lambda: orm.Float(0.0),
+            help="Peak charge of the defect charge density distribution. If set to zero, no scaling will be done.")
 
         spec.outline(
             cls.setup,
@@ -107,9 +108,12 @@ class ModelPotentialWorkchain(WorkChain):
         self.ctx.cell_matrix = orm.ArrayData()
         self.ctx.cell_matrix.set_array('cell_matrix', self.ctx.real_cell)
 
+        if self.inputs.peak_charge == 0.0:
+            peak_charge = None
+
         self.ctx.charge_model = get_charge_model(
             cell_matrix = self.ctx.cell_matrix,
-            peak_charge = self.inputs.peak_charge,
+            peak_charge = peak_charge,
             defect_charge = self.inputs.defect_charge,
             dimensions = self.ctx.grid_dimensions,
             gaussian_params = self.inputs.gaussian_params
