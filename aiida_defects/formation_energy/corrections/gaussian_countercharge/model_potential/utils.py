@@ -11,11 +11,9 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.stats import multivariate_normal
 
-
 from aiida import orm
 from aiida.engine import calcfunction
-from qe_tools._constants import DEFAULT
-
+from qe_tools import CONSTANTS
 
 
 @calcfunction
@@ -45,7 +43,7 @@ def get_cell_matrix(structure):
         3x3 cell matrix array in units of Bohr
 
     """
-    cell_matrix = np.array(structure.cell) / DEFAULT.bohr_to_ang  # Angstrom to Bohr
+    cell_matrix = np.array(structure.cell) / CONSTANTS.bohr_to_ang  # Angstrom to Bohr
     return cell_matrix
 
 
@@ -100,7 +98,7 @@ def get_reciprocal_grid(cell_matrix, cutoff):
         if grid_max[axis] % 2 == 0:
             grid_max[axis] += 1
 
-    return orm.List(list=grid_max.tolist())    
+    return orm.List(list=grid_max.tolist())
 
 
 def get_xyz_coords(cell_matrix, dimensions):
@@ -122,7 +120,7 @@ def get_xyz_coords(cell_matrix, dimensions):
     return xyz_array
 
 
-def generate_charge_model(cell_matrix, peak_charge):
+def generate_charge_model(cell_matrix, peak_charge=None):
     """
     Return a function to compute a periodic gaussian on a grid.
     The returned function can be used for fitting. 
@@ -138,49 +136,49 @@ def generate_charge_model(cell_matrix, peak_charge):
     Returns
     -------
     compute_charge
-        A function that will compute a periodic gaussian on a grid 
+        A function that will compute a periodic gaussian on a grid
         for a given cell and peak charge intensity
     """
 
     def compute_charge(
         xyz_real,
-        x0, y0, z0, 
+        x0, y0, z0,
         sigma_x, sigma_y, sigma_z,
         cov_xy, cov_xz, cov_yz):
         """
-        For a given system charge, create a model charge distribution using 
+        For a given system charge, create a model charge distribution using
         an anisotropic periodic 3D gaussian.
         The charge model for now is a Gaussian.
 
-        NOTE: 
-        The values for sigma and cov are not the values used in construction 
-        of the Gaussian. After the covariance matrix is constructed, its 
-        transpose is multiplied by itself (that is to construct a Gram matrix) 
-        to ensure that it is positive-semidefinite. It is this matrix which is 
-        the real covariance matrix. This transformation is to allow this 
-        function to be used directly by the fitting algorithm without a danger 
-        of crashing.  
+        NOTE:
+        The values for sigma and cov are not the values used in construction
+        of the Gaussian. After the covariance matrix is constructed, its
+        transpose is multiplied by itself (that is to construct a Gram matrix)
+        to ensure that it is positive-semidefinite. It is this matrix which is
+        the real covariance matrix. This transformation is to allow this
+        function to be used directly by the fitting algorithm without a danger
+        of crashing.
 
         Parameters
         ----------
-        xyz_real: 3xN array 
+        xyz_real: 3xN array
             Coordinates to compute the Gaussian for in cartesian coordinates.
         x0, y0, z0: float
             Center of the Gaussian in crystal coordinates.
         sigma_x, sigma_y, sigma_z: float
             Spread of the Gaussian (not the real values used, see note above).
         cov_xy, cov_xz, cov_yz: float
-            Covariance values controlling the rotation of the Gaussian 
+            Covariance values controlling the rotation of the Gaussian
             (not the real values used, see note above).
 
         Returns
         -------
         g
-            Values of the Gaussian computed at all of the desired coordinates and 
+            Values of the Gaussian computed at all of the desired coordinates and
             scaled by the value of charge_integral.
 
         """
-        
+
         # Construct the pseudo-covariance matrix
         V = np.array([[sigma_x, cov_xy, cov_xz],[cov_xy, sigma_y, cov_yz], [cov_xz, cov_yz, sigma_z]])
         # Construct the actual covariance matrix in a way that is always positive semi-definite
@@ -196,7 +194,7 @@ def generate_charge_model(cell_matrix, peak_charge):
                     # Compute the periodic origin in crystal coordinates
                     origin_crystal = (gauss_position + np.array([ii, jj, kk])).reshape(3,1)
                     # Convert this to cartesian coordinates
-                    origin_real = np.dot(cell_matrix.T, origin_crystal)        
+                    origin_real = np.dot(cell_matrix.T, origin_crystal)
                     # Compute the Gaussian centred at this position
                     g = g + get_gaussian_3d(xyz_real.T, origin_real, covar)
 
@@ -204,7 +202,8 @@ def generate_charge_model(cell_matrix, peak_charge):
 
         print("DEBUG: g.max()  = {}".format(g.max()))
         # Scale the result to match the peak charge density
-        g = g * (peak_charge / g.max())
+        if peak_charge:
+            g = g * (peak_charge / g.max())
         print("DEBUG: Peak Charge target  = {}".format(peak_charge))
         print("DEBUG: Peak Charge scaled  = {}".format(g.max()))
         print("DEBUG: Integrated charge density (scaled) = {}".format(get_integral(g, cell_matrix)))
@@ -215,7 +214,7 @@ def generate_charge_model(cell_matrix, peak_charge):
 
 
 @calcfunction
-def get_charge_model(cell_matrix, peak_charge, defect_charge, dimensions, gaussian_params):
+def get_charge_model(cell_matrix, defect_charge, dimensions, gaussian_params, peak_charge=None):
     """
     For a given system charge, create a model charge distribution.
 
@@ -239,9 +238,10 @@ def get_charge_model(cell_matrix, peak_charge, defect_charge, dimensions, gaussi
         The grid with the charge data as an AiiDA ArrayData object
 
     """
-    
+
     cell_matrix = cell_matrix.get_array('cell_matrix')
-    peak_charge = peak_charge.value
+    if peak_charge:
+        peak_charge = peak_charge.value
     defect_charge = defect_charge.value
     dimensions = np.array(dimensions)
     gaussian_params = gaussian_params.get_list()
@@ -260,11 +260,11 @@ def get_charge_model(cell_matrix, peak_charge, defect_charge, dimensions, gaussi
     print("DEBUG: Integrated charge density target  = {}".format(defect_charge))
     g = g * (defect_charge / get_integral(g, cell_matrix))
     print("DEBUG: Integrated charge density (scaled) = {}".format(get_integral(g, cell_matrix)))
-        
+
     # Compensating jellium background
     g = g - np.sum(g)/np.prod(g.shape)
     print("DEBUG: Integrated charge density (jellium) = {}".format(get_integral(g, cell_matrix)))
-    
+
     # Pack the array
     model_charge_array = orm.ArrayData()
     model_charge_array.set_array('model_charge', g)
@@ -351,9 +351,9 @@ def get_gaussian_3d(grid, origin, covar):
         Array on which to compute gaussian
     origin: array
         Centre of gaussian
-    covar: 3x3 array 
+    covar: 3x3 array
         Covariance matrix of gaussian
-        
+
     Returns
     -------
     gaussian
@@ -441,8 +441,8 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
     dimensions = dimensions // 2  #floor division
 
     ijk_array = np.mgrid[
-        -dimensions[0]:dimensions[0] + 1, 
-        -dimensions[1]:dimensions[1] + 1, 
+        -dimensions[0]:dimensions[0] + 1,
+        -dimensions[1]:dimensions[1] + 1,
         -dimensions[2]:dimensions[2] + 1].T
 
     # Get G vectors
@@ -462,7 +462,7 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
     V_model_g[dimensions[0] + 1, dimensions[1] + 1, dimensions[2] + 1] = 0.0
 
     # Get the model potential in real space
-    V_model_r = get_inverse_fft(V_model_g)
+    V_model_r = get_inverse_fft(V_model_g) * CONSTANTS.hartree_to_ev
 
     # Pack up the array
     V_model_array = orm.ArrayData()
@@ -480,6 +480,6 @@ def get_energy(potential, charge_density, cell_matrix):
     potential = potential.get_array('model_potential')
     charge_density = charge_density.get_array('model_charge')
 
-    energy = np.real(0.5 * get_integral(charge_density*potential, cell_matrix) * DEFAULT.hartree_to_ev)
+    energy = np.real(0.5 * get_integral(charge_density*potential, cell_matrix))
     return orm.Float(energy)
 

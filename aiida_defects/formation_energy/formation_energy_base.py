@@ -69,17 +69,46 @@ class FormationEnergyWorkchainBase(WorkChain):
 
         # Chemical potential
         spec.input('run_chem_pot_wc', valid_type=orm.Bool, default=lambda: orm.Bool(True))
-        spec.input('formation_energy_dict', valid_type=orm.Dict)
-        spec.input('compound', valid_type=orm.Str)
-        spec.input('dependent_element', valid_type=orm.Str)
-        spec.input("ref_energy", valid_type=orm.Dict, help="The reference chemical potential of elements in the structure")
+        spec.input('formation_energy_dict', required=False, valid_type=orm.Dict)
+        spec.input('compound', required=False, valid_type=orm.Str)
+        spec.input('dependent_element', required=False, valid_type=orm.Str)
+        spec.input("dopant_elements", valid_type=orm.List, default=lambda: orm.List(list=[]))
+        spec.input("ref_energy", valid_type=orm.Dict, required=False, help="The reference chemical potential of elements in the structure")
         spec.input('tolerance', valid_type=orm.Float, default=lambda: orm.Float(1E-4))
         spec.input(
              "chemical_potential",
              valid_type=orm.Dict, required=False, 
              help="The chemical potential of the given defect type. The convention is that removing an atom is positive")
         
-        spec.input('sigma', valid_type=orm.Float, required=False)
+        # Input for correction workchain
+        # Charge Model Settings
+        spec.input_namespace('charge_model',
+            help="Namespace for settings related to different charge models")
+        spec.input("charge_model.model_type",
+            valid_type=orm.Str,
+            help="Charge model type: 'fixed' or 'fitted'",
+            default=lambda: orm.Str('fixed'))        
+        # Fixed
+        spec.input_namespace('charge_model.fixed', required=False, populate_defaults=False,
+            help="Inputs for a fixed charge model using a user-specified multivariate gaussian")
+        spec.input("charge_model.fixed.gaussian_params",
+            valid_type=orm.List,
+            help="A length 9 list of parameters needed to construct the "
+            "gaussian charge distribution. The format required is "
+            "[x0, y0, z0, sigma_x, sigma_y, sigma_z, cov_xy, cov_xz, cov_yz]")
+        # Fitted
+        spec.input_namespace('charge_model.fitted', required=False, populate_defaults=False,
+            help="Inputs for a fitted charge model using a multivariate anisotropic gaussian.")
+        spec.input("charge_model.fitted.tolerance",
+            valid_type=orm.Float,
+            help="Permissable error for any fitted charge model parameter.",
+            default=lambda: orm.Float(1.0e-3))
+        spec.input("charge_model.fitted.strict_fit",
+            valid_type=orm.Bool,
+            help="When true, exit the workchain if a fitting parameter is outside the specified tolerance.",
+            default=lambda: orm.Bool(True))       
+#        spec.input('sigma', valid_type=orm.Float, required=False)
+        spec.input("cutoff", valid_type=orm.Float)
 
         spec.input("run_dfpt", valid_type=orm.Bool)
 
@@ -89,7 +118,6 @@ class FormationEnergyWorkchainBase(WorkChain):
             valid_type=orm.Str,
             help="The correction scheme to apply",
         )
-        spec.input("cutoff", valid_type=orm.Float)
 
 
         # Outputs
@@ -195,16 +223,23 @@ class FormationEnergyWorkchainBase(WorkChain):
             "v_host": self.ctx.v_host,
             "v_defect_q0": self.ctx.v_defect_q0,
             "v_defect_q": self.ctx.v_defect_q,
-            #"rho_host": self.ctx.rho_host,
-            #"rho_host": self.ctx.rho_defect_q0,
-            #"rho_defect_q": self.ctx.rho_defect_q,
+            "rho_host": self.ctx.rho_host,
+            "rho_defect_q": self.ctx.rho_defect_q,
             "defect_charge": self.inputs.defect_charge,
             "defect_site": self.inputs.defect_site,
             "host_structure": self.inputs.host_structure,
             "epsilon": self.ctx.epsilon,
-            "sigma" : self.inputs.sigma,
             "cutoff" : self.inputs.cutoff,
+            'charge_model': {
+                'model_type': self.inputs.charge_model.model_type
+                }
+        
         }
+        if self.inputs.charge_model.model_type.value == 'fixed':
+            inputs['charge_model']['fixed'] = {'gaussian_params': self.inputs.charge_model.fixed.gaussian_params}
+        else:
+            inputs['charge_model']['fitted'] = {'tolerance': self.inputs.charge_model.fitted.tolerance,
+                                                'strict_fit': self.inputs.charge_model.fitted.strict_fit}
 
         workchain_future = self.submit(GaussianCounterChargeWorkchain, **inputs)
         label = "correction_workchain"
@@ -266,6 +301,7 @@ class FormationEnergyWorkchainBase(WorkChain):
             "formation_energy_dict": self.inputs.formation_energy_dict,
             "compound": self.inputs.compound,
             "dependent_element": self.inputs.dependent_element,
+            "dopant_elements": self.inputs.dopant_elements, 
             "ref_energy": self.inputs.ref_energy,
             "tolerance": self.inputs.tolerance,
         }

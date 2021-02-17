@@ -61,9 +61,9 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         spec.input('v_host_node', valid_type=orm.Int, required=False)
         spec.input('v_defect_q0_node', valid_type=orm.Int, required=False)
         spec.input('v_defect_q_node', valid_type=orm.Int, required=False)
-#        spec.input('rho_host_node', valid_type=orm.Int, required=False)
-#        spec.input('rho_defect_q0_node', valid_type=orm.Int, required=False)
-#        spec.input('rho_defect_q_node', valid_type=orm.Int, required=False)
+        spec.input('rho_host_node', valid_type=orm.Int, required=False)
+        spec.input('rho_defect_q0_node', valid_type=orm.Int, required=False)
+        spec.input('rho_defect_q_node', valid_type=orm.Int, required=False)
         spec.input("epsilon", valid_type=orm.Float, help="Dielectric constant of the host", required=False)
 
         # DFT inputs (PW.x)

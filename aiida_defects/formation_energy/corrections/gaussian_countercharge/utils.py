@@ -11,8 +11,6 @@ import numpy as np
 from aiida import orm
 from aiida.engine import calcfunction
 
-#from qe_tools.constants import bohr_to_ang
-
 """
 Utility functions for the gaussian countercharge workchain
 """
@@ -97,7 +95,7 @@ def fit_energies(dimensions_dict, energies_dict):
         AiiDA dictionary of the form: structure : energy
     """
 
-    from scipy.optimize import curve_fit    
+    from scipy.optimize import curve_fit
 
     def fitting_func(x, a, b, c):
         """
@@ -189,12 +187,12 @@ def get_charge_model_fit(rho_host, rho_defect_q, host_structure):
     rho_defect_q_data = rho_defect_q.get_array(rho_defect_q.get_arraynames()[0])
     rho_host_data = rho_host.get_array(rho_host.get_arraynames()[0])
 
-    # Charge density from QE is in e/cubic-bohr, so convert if necessary 
+    # Charge density from QE is in e/cubic-bohr, so convert if necessary
     # TODO: Check if the CUBE file format is strictly Bohr or if this is a QE thing
-    #rho_diff = (rho_host_data - rho_defect_q_data)/(bohr_to_ang**3)  
-    rho_diff = rho_host_data - rho_defect_q_data 
+    #rho_diff = (rho_host_data - rho_defect_q_data)/(bohr_to_ang**3)
+    rho_diff = rho_host_data - rho_defect_q_data
 
-    # Detect the centre of the charge in the data 
+    # Detect the centre of the charge in the data
     max_pos_mat = np.array(np.unravel_index(rho_diff.argmax(), rho_diff.shape)) # matrix coords
     max_pos_ijk = (max_pos_mat*1.)/(np.array(rho_diff.shape)-1) # Compute crystal coords
     max_i = max_pos_ijk[0]

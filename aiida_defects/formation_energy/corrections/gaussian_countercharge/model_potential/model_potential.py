@@ -11,7 +11,7 @@ import numpy as np
 
 from aiida import orm
 from aiida.engine import WorkChain, calcfunction, while_
-from qe_tools._constants import DEFAULT
+from qe_tools import CONSTANTS
 
 from .utils import (create_model_structure, get_cell_matrix,
                     get_reciprocal_cell, get_reciprocal_grid, get_charge_model,
@@ -25,24 +25,21 @@ class ModelPotentialWorkchain(WorkChain):
     @classmethod
     def define(cls, spec):
         super(ModelPotentialWorkchain, cls).define(spec)
-        spec.input('peak_charge', 
-            valid_type=orm.Float,
-            help="Peak charge of the defect charge density distribution")
-        spec.input("defect_charge", 
+        spec.input("defect_charge",
             valid_type=orm.Float,
             help="The target defect charge state")
-        spec.input('scale_factor', 
+        spec.input('scale_factor',
             valid_type=orm.Int,
             help="Scale factor to apply when constructing the model system")
-        spec.input('host_structure', 
+        spec.input('host_structure',
             valid_type=orm.StructureData,
             help="The unscaled host structure")
         spec.input('defect_site',
             valid_type=orm.List,
             help="Defect site position in crystal coordinates")
-        spec.input('cutoff', 
-            valid_type=orm.Float, 
-            default=orm.Float(40.),
+        spec.input('cutoff',
+            valid_type=orm.Float,
+            default=lambda: orm.Float(40.),
             help="Energy cutoff for grids in Rydberg")
         spec.input('epsilon',
             valid_type=orm.Float,
@@ -52,6 +49,10 @@ class ModelPotentialWorkchain(WorkChain):
             help="A length 9 list of parameters needed to construct the "
             "gaussian charge distribution. The format required is "
             "[x0, y0, z0, sigma_x, sigma_y, sigma_z, cov_xy, cov_xz, cov_yz]")
+        spec.input('peak_charge',
+            valid_type=orm.Float,
+            default=lambda: orm.Float(0.0),
+            help="Peak charge of the defect charge density distribution. If set to zero, no scaling will be done.")
 
         spec.outline(
             cls.setup,
@@ -87,8 +88,8 @@ class ModelPotentialWorkchain(WorkChain):
         # Get cell matrices
         self.ctx.real_cell = get_cell_matrix(self.ctx.model_structure)
         self.ctx.reciprocal_cell = get_reciprocal_cell(self.ctx.real_cell)
-#        self.report("DEBUG: recip cell: {}".format(self.ctx.reciprocal_cell))
-        limits = np.array(self.ctx.model_structure.cell_lengths) / DEFAULT.bohr_to_ang
+        self.report("DEBUG: recip cell: {}".format(self.ctx.reciprocal_cell))
+        limits = np.array(self.ctx.model_structure.cell_lengths) / CONSTANTS.bohr_to_ang
         self.ctx.limits = orm.List(list=limits.tolist())
 
 
@@ -107,9 +108,12 @@ class ModelPotentialWorkchain(WorkChain):
         self.ctx.cell_matrix = orm.ArrayData()
         self.ctx.cell_matrix.set_array('cell_matrix', self.ctx.real_cell)
 
+        if self.inputs.peak_charge == 0.0:
+            peak_charge = None
+
         self.ctx.charge_model = get_charge_model(
             cell_matrix = self.ctx.cell_matrix,
-            peak_charge = self.inputs.peak_charge,
+            peak_charge = peak_charge,
             defect_charge = self.inputs.defect_charge,
             dimensions = self.ctx.grid_dimensions,
             gaussian_params = self.inputs.gaussian_params

@@ -12,17 +12,18 @@ import numpy as np
 from aiida import orm
 from aiida.common import AttributeDict
 from aiida.engine import WorkChain, calcfunction, if_
-#from qe_tools.constants import hartree_to_ev
-from qe_tools._constants import DEFAULT
+from qe_tools import CONSTANTS
 
 from .utils import get_interpolation
 from .lany_zunger.lany_zunger import LanyZungerAlignmentWorkchain
 from .density_weighted.density_weighted import DensityWeightedAlignmentWorkchain
+from .mae.mae import MaeAlignmentWorkchain
 
 
 valid_schemes = {
     'lany_zunger' : LanyZungerAlignmentWorkchain,
-    'density_weighted': DensityWeightedAlignmentWorkchain
+    'density_weighted': DensityWeightedAlignmentWorkchain,
+    'mae': MaeAlignmentWorkchain
 }
 
 class PotentialAlignmentWorkchain(WorkChain):
@@ -39,6 +40,9 @@ class PotentialAlignmentWorkchain(WorkChain):
             help="Whether to allow arrays of different shapes to be interpolated")
         spec.expose_inputs(DensityWeightedAlignmentWorkchain,
             namespace='density_weighted',
+            namespace_options={'required': False, 'populate_defaults': False})
+        spec.expose_inputs(MaeAlignmentWorkchain,
+            namespace='mae',
             namespace_options={'required': False, 'populate_defaults': False})
         spec.expose_inputs(LanyZungerAlignmentWorkchain,
             namespace='lany_zunger',
@@ -90,7 +94,6 @@ class PotentialAlignmentWorkchain(WorkChain):
             return self.exit_codes.ERROR_INPUT_NO_SCHEME
         else:
             return self.exit_codes.ERROR_INPUT_BAD_SCHEME
-
 
         # Collect the inputs from the selected scheme
         inputs = AttributeDict(
@@ -176,7 +179,9 @@ class PotentialAlignmentWorkchain(WorkChain):
             interpolated_arrays[array_name] = get_interpolation(
                 input_array=array,
                 target_shape=target_shape)
-        self.ctx.interpolated_arrays = interpolated_arrays
+        # Replace input arrays with interpolated versions
+        for array_name, array in interpolated_arrays.items():
+            self.ctx.inputs[array_name] = array
 
         return
 
@@ -188,10 +193,6 @@ class PotentialAlignmentWorkchain(WorkChain):
         alignment_workchain = valid_schemes[self.ctx.alignment_scheme]
 
         inputs = self.ctx.inputs
-
-        # Replace input arrays with interpolated versions
-        for array_name, array in self.ctx.interpolated_arrays.items():
-            inputs[array_name] = array
 
         workchain_future = self.submit(alignment_workchain, **inputs)
         self.to_context(**{'alignment_wc': workchain_future})
@@ -220,6 +221,5 @@ class PotentialAlignmentWorkchain(WorkChain):
         Collect results
         """
         self.report(
-            "Completed alignment. An alignment of {} eV is required".format(
-                self.ctx.alignment.value * DEFAULT.hartree_to_ev/2.0 ))
+            "Completed alignment. An alignment of {} eV is required".format(self.ctx.alignment))
         self.out('alignment_required', self.ctx.alignment)
