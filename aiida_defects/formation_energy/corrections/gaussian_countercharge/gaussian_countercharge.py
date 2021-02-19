@@ -14,7 +14,8 @@ from aiida_defects.formation_energy.potential_alignment.potential_alignment impo
 from .model_potential.model_potential import ModelPotentialWorkchain
 from aiida_defects.formation_energy.potential_alignment.utils import get_potential_difference
 from .utils import get_total_correction, get_total_alignment, get_charge_model_fit, fit_energies, calc_correction
-
+from qe_tools import CONSTANTS
+import numpy as np 
 
 class GaussianCounterChargeWorkchain(WorkChain):
     """
@@ -107,6 +108,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             cls.get_model_corrections,
             cls.compute_correction,
         )
+        spec.output('gaussian_parameters', valid_type=orm.Dict, required=False)
         spec.output('v_dft_difference', valid_type=orm.ArrayData)
         spec.output('alignment_q0_to_host', valid_type=orm.Float)
         spec.output('alignment_dft_to_model', valid_type=orm.Float)
@@ -150,7 +152,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         ## Verification
         # Minimum number of iterations required.
         # TODO: Replace this with an input ports validator
-        if self.inputs.model_iterations_required < 3:
+        if self.inputs.charge_model.model_type == 'fitted' and self.inputs.model_iterations_required < 3:
            self.report('The requested number of iterations, {}, is too low. At least 3 are required to achieve an adequate data fit'.format(self.inputs.model_iterations_required.value))
            return self.exit_codes.ERROR_BAD_INPUT_ITERATIONS_REQUIRED
 
@@ -168,6 +170,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             elif 'fixed' in self.inputs.charge_model: #Wanted fitted, but gave fixed params
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
         elif self.ctx.charge_model == 'fixed':
+            self.inputs.model_iterations_required = orm.Int(1)
             if 'fixed' not in self.inputs.charge_model: #Wanted fixed, but no params given
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
             elif 'fitted' in self.inputs.charge_model: #Wanted fixed, but gave fitted params
@@ -224,9 +227,11 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         self.ctx.fitted_params = orm.List(list=fit['fit'])
         self.ctx.peak_charge = orm.Float(fit['peak_charge'])
+        self.out('gaussian_parameters', fit)
+        self.report('DEBUG: the gaussian parameters obtained from fitting are: {}'.format(fit['fit']))
 
         for parameter in fit['error']:
-            if parameter > self.inputs.charge_fit_tolerance:
+            if parameter > self.inputs.charge_model.fitted.tolerance:
                 self.logger.warning("Charge fitting parameter worse than allowed tolerance")
                 if self.inputs.strict_fit:
                     return self.exit_codes.ERROR_BAD_CHARGE_FIT
@@ -284,7 +289,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             if not model_workchain.is_finished_ok:
                 self.report(
                     'Model potential workchain for scale factor {} failed with status {}'
-                    .format(model_workchain.scale_factor,
+                    .format(scale_factor,
                             model_workchain.exit_status))
                 return self.exit_codes.ERROR_SUB_PROCESS_FAILED_MODEL_POTENTIAL
             else:
@@ -376,20 +381,30 @@ class GaussianCounterChargeWorkchain(WorkChain):
         """
         Fit the calculated model energies and obtain an estimate for the isolated model energy
         """
+        
+        if self.inputs.charge_model.model_type == 'fitted':
+            # Get the linear dimensions of the structures
+            linear_dimensions = {}
 
-        # Get the linear dimensions of the structures
-        linear_dimensions = {}
+            for scale, structure in self.ctx.model_structures.items():
+                volume = structure.get_cell_volume()
+                linear_dimensions[scale] = 1 / (volume**(1 / 3.))
 
-        for scale, structure in self.ctx.model_structures.items():
-            volume = structure.get_cell_volume()
-            linear_dimensions[scale] = 1 / (volume**(1 / 3.))
+            self.report(
+                "Fitting the model energies to obtain the model energy for the isolated case"
+            )
+            self.ctx.isolated_energy = fit_energies(
+                orm.Dict(dict=linear_dimensions),
+                orm.Dict(dict=self.ctx.model_energies))
+        else:
+            sigma = self.inputs.charge_model.fixed.gaussian_params.get_list()[3]
+            defect_charge = self.inputs.defect_charge.value
+            epsilon = self.inputs.epsilon.value
+            self.report(
+                    "Computing the energy of the isolated gaussian analytically"
+            )
+            self.ctx.isolated_energy = orm.Float(defect_charge**2/(2*epsilon*sigma*np.sqrt(np.pi))*CONSTANTS.hartree_to_ev)
 
-        self.report(
-            "Fitting the model energies to obtain the model energy for the isolated case"
-        )
-        self.ctx.isolated_energy = fit_energies(
-            orm.Dict(dict=linear_dimensions),
-            orm.Dict(dict=self.ctx.model_energies))
         self.report("The isolated model energy is {} eV".format(
             self.ctx.isolated_energy.value))
 

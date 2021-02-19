@@ -88,7 +88,7 @@ class ModelPotentialWorkchain(WorkChain):
         # Get cell matrices
         self.ctx.real_cell = get_cell_matrix(self.ctx.model_structure)
         self.ctx.reciprocal_cell = get_reciprocal_cell(self.ctx.real_cell)
-        self.report("DEBUG: recip cell: {}".format(self.ctx.reciprocal_cell))
+#        self.report("DEBUG: recip cell: {}".format(self.ctx.reciprocal_cell))
         limits = np.array(self.ctx.model_structure.cell_lengths) / CONSTANTS.bohr_to_ang
         self.ctx.limits = orm.List(list=limits.tolist())
 
@@ -110,6 +110,8 @@ class ModelPotentialWorkchain(WorkChain):
 
         if self.inputs.peak_charge == 0.0:
             peak_charge = None
+        else:
+            peak_charge = self.inputs.peak_charge
 
         self.ctx.charge_model = get_charge_model(
             cell_matrix = self.ctx.cell_matrix,
