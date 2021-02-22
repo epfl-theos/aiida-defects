@@ -13,7 +13,7 @@ from aiida import orm
 from aiida_defects.formation_energy.potential_alignment.potential_alignment import PotentialAlignmentWorkchain
 from .model_potential.model_potential import ModelPotentialWorkchain
 from aiida_defects.formation_energy.potential_alignment.utils import get_potential_difference
-from .utils import get_total_correction, get_total_alignment, get_charge_model_fit, fit_energies, calc_correction
+from .utils import get_total_correction, get_total_alignment, get_charge_model_fit, fit_energies, calc_correction, is_gaussian_isotrope
 from qe_tools import CONSTANTS
 import numpy as np 
 
@@ -101,10 +101,11 @@ class GaussianCounterChargeWorkchain(WorkChain):
                 cls.compute_model_potential,
             ),
             cls.check_model_potential_workchains,
+            cls.get_isolated_energy,
             cls.compute_dft_difference_potential,
             cls.submit_alignment_workchains,
             cls.check_alignment_workchains,
-            cls.get_isolated_energy,
+            #cls.get_isolated_energy,
             cls.get_model_corrections,
             cls.compute_correction,
         )
@@ -170,7 +171,12 @@ class GaussianCounterChargeWorkchain(WorkChain):
             elif 'fixed' in self.inputs.charge_model: #Wanted fitted, but gave fixed params
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
         elif self.ctx.charge_model == 'fixed':
-            self.inputs.model_iterations_required = orm.Int(1)
+            # check if the gaussian parameters correspond to an isotropic gaussian
+            if is_gaussian_isotrope(self.inputs.charge_model.fixed.gaussian_params.get_list()[3:]):
+                self.report('DEBUG: the given gaussian parameters correspond to isotropic gaussian')
+                self.inputs.model_iterations_required = orm.Int(1)
+                self.ctx.is_gaussian_isotrope = True
+                self.ctx.sigma = np.mean(self.inputs.charge_model.fixed.gaussian_params.get_list()[3:6])
             if 'fixed' not in self.inputs.charge_model: #Wanted fixed, but no params given
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
             elif 'fitted' in self.inputs.charge_model: #Wanted fixed, but gave fitted params
@@ -235,7 +241,14 @@ class GaussianCounterChargeWorkchain(WorkChain):
                 self.logger.warning("Charge fitting parameter worse than allowed tolerance")
                 if self.inputs.strict_fit:
                     return self.exit_codes.ERROR_BAD_CHARGE_FIT
-
+        
+        if is_gaussian_isotrope(self.ctx.fitted_params.get_list()[3:]):
+            self.report('The fitted gaussian is isotropic. The isolated model energy will be computed analytically')
+            self.inputs.model_iterations_required = orm.Int(1)
+            self.ctx.is_gaussian_isotrope = True
+            self.ctx.sigma = np.mean(self.ctx.fitted_params.get_list()[3:6])
+        else:
+            self.ctx.is_gaussian_isotrope = False
 
     def should_run_model(self):
         """
@@ -382,7 +395,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         Fit the calculated model energies and obtain an estimate for the isolated model energy
         """
         
-        if self.inputs.charge_model.model_type == 'fitted':
+        if not self.ctx.is_gaussian_isotrope:
             # Get the linear dimensions of the structures
             linear_dimensions = {}
 
@@ -397,7 +410,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
                 orm.Dict(dict=linear_dimensions),
                 orm.Dict(dict=self.ctx.model_energies))
         else:
-            sigma = self.inputs.charge_model.fixed.gaussian_params.get_list()[3]
+            sigma = self.ctx.sigma
             defect_charge = self.inputs.defect_charge.value
             epsilon = self.inputs.epsilon.value
             self.report(

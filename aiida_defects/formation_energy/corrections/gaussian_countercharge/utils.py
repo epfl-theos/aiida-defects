@@ -15,6 +15,13 @@ from aiida.engine import calcfunction
 Utility functions for the gaussian countercharge workchain
 """
 
+def is_gaussian_isotrope(gaussian_params):
+    eps = 0.01
+    average_sigma = np.mean(gaussian_params[:3])
+    #check if the off-diagonal elements sigma_xy, sigma_xz and simga_yz are all close to zero
+    test_1 = all(np.array(gaussian_params[3:])/average_sigma < eps)
+    test_2 = all(abs((np.array(gaussian_params[:3])/average_sigma) - 1.0) < eps)
+    return test_1 and test_2
 
 @calcfunction
 def create_model_structure(base_structure, scale_factor):
