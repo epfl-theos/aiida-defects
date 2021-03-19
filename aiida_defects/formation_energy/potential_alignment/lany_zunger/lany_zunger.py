@@ -29,15 +29,15 @@ class LanyZungerAlignmentWorkchain(WorkChain):
         spec.input(
             'e_tol',
             valid_type=orm.Float,
-            default=orm.Float(0.2),
+            default=lambda: orm.Float(0.2),
             help="Energy tolerance to decide which atoms to exclude to compute alignment")
         spec.input('first_potential', valid_type=orm.ArrayData)
         spec.input('second_potential', valid_type=orm.ArrayData)
         spec.input(
             'alignment_scheme',
             valid_type=orm.Str,
-            default=orm.Str('lany-zunger'))
-        spec.input('interpolate', valid_type=orm.Bool, default=orm.Bool(False))
+            default=lambda: orm.Str('lany-zunger'))
+        spec.input('interpolate', valid_type=orm.Bool, default=lambda: orm.Bool(False))
         spec.outline(
         )
         #spec.expose_outputs(PwBaseWorkChain, exclude=('output_structure',))

@@ -36,7 +36,7 @@ class PotentialAlignmentWorkchain(WorkChain):
         super(PotentialAlignmentWorkchain, cls).define(spec)
         spec.input('allow_interpolation',
             valid_type=orm.Bool,
-            default=orm.Bool(False),
+            default=lambda: orm.Bool(False),
             help="Whether to allow arrays of different shapes to be interpolated")
         spec.expose_inputs(DensityWeightedAlignmentWorkchain,
             namespace='density_weighted',

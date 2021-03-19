@@ -238,7 +238,7 @@ def Order_point_clockwise(points):
         sort_t = np.sort(t)
         t = list(t)
         u = [t.index(element) for element in sort_t]
-    points_order = points[u]
+        points_order = points[u]
 #    ordered_points = ArrayData()
 #    ordered_points.set_array('data', points_order)
 #    return ordered_points

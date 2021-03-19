@@ -84,7 +84,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         spec.input_namespace('charge_model.fitted', required=False, populate_defaults=False,
             help="Inputs for a fitted charge model using a multivariate anisotropic gaussian.")
         spec.input("charge_model.fitted.tolerance",
-            valid_type=orm.Float,
+                valid_type=orm.Float,
             help="Permissable error for any fitted charge model parameter.",
             default=lambda: orm.Float(1.0e-3))
         spec.input("charge_model.fitted.strict_fit",
@@ -239,7 +239,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         for parameter in fit['error']:
             if parameter > self.inputs.charge_model.fitted.tolerance:
                 self.logger.warning("Charge fitting parameter worse than allowed tolerance")
-                if self.inputs.strict_fit:
+                if self.inputs.charge_model.fitted.strict_fit:
                     return self.exit_codes.ERROR_BAD_CHARGE_FIT
         
         if is_gaussian_isotrope(self.ctx.fitted_params.get_list()[3:]):
