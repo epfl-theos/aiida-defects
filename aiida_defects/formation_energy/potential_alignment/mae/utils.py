@@ -8,6 +8,7 @@
 from __future__ import absolute_import
 
 import numpy as np
+from qe_tools import CONSTANTS
 
 from aiida.engine import calcfunction
 from aiida import orm
@@ -70,7 +71,7 @@ def get_alignment(potential_difference, defect_site, cutoff_radius=lambda: orm.F
         raise AllValuesMaskedError
 
     fit_result = fit_potential(v_diff_masked)
-    alignment = fit_result.x
+    alignment = fit_result.x*CONSTANTS.ry_to_ev
 
     return orm.Float(alignment)
 

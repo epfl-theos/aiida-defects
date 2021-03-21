@@ -110,9 +110,10 @@ class GaussianCounterChargeWorkchain(WorkChain):
             cls.compute_correction,
         )
         spec.output('gaussian_parameters', valid_type=orm.Dict, required=False)
-        spec.output('v_dft_difference', valid_type=orm.ArrayData)
+#        spec.output('v_dft_difference', valid_type=orm.ArrayData)
         spec.output('alignment_q0_to_host', valid_type=orm.Float)
-        spec.output('alignment_dft_to_model', valid_type=orm.Float)
+        spec.output('alignment_diff_q_q0_to_model', valid_type=orm.Float)
+        spec.output('alignment_diff_q_host_to_model', valid_type=orm.Float)
         spec.output('total_alignment', valid_type=orm.Float, required=True)
         spec.output('total_correction', valid_type=orm.Float)
         spec.output('electrostatic_correction', valid_type=orm.Float)
@@ -319,7 +320,11 @@ class GaussianCounterChargeWorkchain(WorkChain):
         """
         self.ctx.v_defect_q_q0 = get_potential_difference(
             self.inputs.v_defect_q, self.inputs.v_defect_q0)
-        self.out('v_dft_difference', self.ctx.v_defect_q_q0)
+        #self.out('v_dft_difference', self.ctx.v_defect_q_q0)
+
+        self.ctx.v_defect_q_host = get_potential_difference(
+            self.inputs.v_defect_q, self.inputs.v_host)
+        #self.out('v_dft_difference', self.ctx.v_defect_q_q0)
 
 
     def submit_alignment_workchains(self):
@@ -342,13 +347,14 @@ class GaussianCounterChargeWorkchain(WorkChain):
         label = 'workchain_alignment_q0_to_host'
         self.to_context(**{label: workchain_future})
 
-        # Convert units from model potential workchain, and also change sign
+        # Convert units from from eV in model potential to Ryd unit as in DFT potential, and also change sign
+        # The potential alignment has to be converted back to eV. It is done in the mae/utils.py. Not pretty, has to be cleaned
         # TODO: Check if this breaks provenance graph
         v_model = orm.ArrayData()
         v_model.set_array('data',
-            self.ctx.v_model.get_array(self.ctx.v_model.get_arraynames()[0])*-2.0) # Ha to Ry - This is dirty - need to harmonise units
+            self.ctx.v_model.get_array(self.ctx.v_model.get_arraynames()[0])/(-1.0*CONSTANTS.ry_to_ev)) # eV to Ry unit of potential - This is dirty - need to harmonise units
 
-        # Compute the alignment between the defect DFT difference potential, and the model
+        # Compute the alignment between the difference of DFT potentials v_q and v_q0, and the model
         inputs = {
 
             "allow_interpolation": orm.Bool(True),
@@ -359,9 +365,22 @@ class GaussianCounterChargeWorkchain(WorkChain):
             },
         }
         workchain_future = self.submit(PotentialAlignmentWorkchain, **inputs)
-        label = 'workchain_alignment_dft_to_model'
+        label = 'workchain_alignment_q-q0_to_model'
         self.to_context(**{label: workchain_future})
 
+        # Compute the alignment between the difference of DFT potentials v_q and v_host, and the model
+        inputs = {
+
+            "allow_interpolation": orm.Bool(True),
+            "mae":{
+                "first_potential": self.ctx.v_defect_q_host,
+                "second_potential": v_model,
+                "defect_site": self.inputs.defect_site
+            },
+        }
+        workchain_future = self.submit(PotentialAlignmentWorkchain, **inputs)
+        label = 'workchain_alignment_q-host_to_model'
+        self.to_context(**{label: workchain_future})
 
     def check_alignment_workchains(self):
         """
@@ -379,16 +398,25 @@ class GaussianCounterChargeWorkchain(WorkChain):
         else:
             self.ctx.alignment_q0_to_host = alignment_wc.outputs.alignment_required
 
-        # DFT diff to model
-        alignment_wc = self.ctx['workchain_alignment_dft_to_model']
+        # DFT q-q0 to model
+        alignment_wc = self.ctx['workchain_alignment_q-q0_to_model']
         if not alignment_wc.is_finished_ok:
             self.report(
-                'Potential alignment workchain (DFT diff to model) failed with status {}'
+                'Potential alignment workchain (DFT q-q0 to model) failed with status {}'
                 .format(alignment_wc.exit_status))
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_ALIGNMENT
         else:
-            self.ctx.alignment_dft_to_model = alignment_wc.outputs.alignment_required
+            self.ctx['alignment_q-q0_to_model'] = alignment_wc.outputs.alignment_required
 
+        # DFT q-host to model
+        alignment_wc = self.ctx['workchain_alignment_q-host_to_model']
+        if not alignment_wc.is_finished_ok:
+            self.report(
+                'Potential alignment workchain (DFT q-host to model) failed with status {}'
+                .format(alignment_wc.exit_status))
+            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_ALIGNMENT
+        else:
+            self.ctx['alignment_q-host_to_model'] = alignment_wc.outputs.alignment_required
 
     def get_isolated_energy(self):
         """
@@ -440,8 +468,8 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         electrostatic_correction = self.ctx.model_correction_energies['1']
 
-        total_alignment = get_total_alignment(self.ctx.alignment_dft_to_model,
-                                              self.ctx.alignment_q0_to_host,
+        total_alignment = get_total_alignment(self.ctx['alignment_q-q0_to_model'],
+                                              self.ctx['alignment_q0_to_host'],
                                               self.inputs.defect_charge)
 
         total_correction = get_total_correction(electrostatic_correction,
@@ -462,6 +490,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         # Store additional outputs
         self.out('alignment_q0_to_host', self.ctx.alignment_q0_to_host)
-        self.out('alignment_dft_to_model', self.ctx.alignment_dft_to_model)
+        self.out('alignment_diff_q_q0_to_model', self.ctx['alignment_q-q0_to_model'])
+        self.out('alignment_diff_q_host_to_model', self.ctx['alignment_q-host_to_model'])
 
         self.report('Gaussian Countercharge workchain completed successfully')

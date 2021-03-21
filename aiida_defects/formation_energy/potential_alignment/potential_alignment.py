@@ -221,5 +221,5 @@ class PotentialAlignmentWorkchain(WorkChain):
         Collect results
         """
         self.report(
-            "Completed alignment. An alignment of {} eV is required".format(self.ctx.alignment))
+            "Completed alignment. An alignment of {} eV is required".format(self.ctx.alignment.value))
         self.out('alignment_required', self.ctx.alignment)
