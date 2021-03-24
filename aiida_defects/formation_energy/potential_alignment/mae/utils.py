@@ -51,7 +51,7 @@ def get_alignment(potential_difference, defect_site, cutoff_radius=lambda: orm.F
     # Generate a crystal grid of the same dimension as the data
     ijk_array = get_grid(v_diff.shape, endpoint=False)
     # Compute the distance from the defect site to every other.
-    distance_vectors = np.array(defect_site).reshape(3,1) - ijk_array
+    distance_vectors = np.array(defect_site.get_list()).reshape(3,1) - ijk_array
     # Apply minimum image
     min_image_vectors = (distance_vectors - np.rint(distance_vectors))
     # Compute distances and reshape to match input data
@@ -61,7 +61,7 @@ def get_alignment(potential_difference, defect_site, cutoff_radius=lambda: orm.F
     # images is d=1 so look for coordinates at a distance of less than d=0.5.
     # These are the coordinates within the shphere of interaction of the defect.
     # Mask these and only compute the alignment the remaining, most distance points.
-    mask = np.ma.less(distances, cutoff_radius)
+    mask = np.ma.less(distances, cutoff_radius.value)
     v_diff_masked = np.ma.masked_array(v_diff, mask=mask)
     values_remaining = (v_diff_masked.count()/np.prod(v_diff.shape))*100.0
     print('{:.2f}% of values remain'.format(values_remaining))
