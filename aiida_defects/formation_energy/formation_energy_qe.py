@@ -13,8 +13,9 @@ from aiida import orm
 from aiida.engine import WorkChain, calcfunction, ToContext, if_, submit
 from aiida.plugins import CalculationFactory, WorkflowFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-# from aiida_quantumespresso.calculations.pp import PpCalculation
-from aiida.orm.nodes.data.upf import get_pseudos_from_structure
+from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
+from aiida_quantumespresso.workflows.protocols.utils import recursive_merge
+from aiida_quantumespresso.common.types import RelaxType
 
 from aiida_defects.formation_energy.formation_energy_base import FormationEnergyWorkchainBase
 from aiida_defects.formation_energy.utils import run_pw_calculation
@@ -64,14 +65,14 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         spec.input('rho_host_node', valid_type=orm.Int, required=False)
         spec.input('rho_defect_q0_node', valid_type=orm.Int, required=False)
         spec.input('rho_defect_q_node', valid_type=orm.Int, required=False)
-        spec.input("epsilon", valid_type=orm.Float, help="Dielectric constant of the host", required=False)
+        spec.input("relaxation_scheme", valid_type=orm.Str, required=False,
+            default=lambda: orm.Str('vc-relax'),
+            help="Option to relax the cell. Possible options are : ['fixed', 'relax', 'vc-relax']")
 
         # DFT inputs (PW.x)
         spec.input("qe.dft.supercell.code", valid_type=orm.Code,
             help="The pw.x code to use for the calculations")
-#        spec.input("qe.dft.supercell.kpoints", valid_type=orm.KpointsData,
-#            help="The k-point grid to use for the calculations")
-        spec.input("qe.dft.supercell.parameters", valid_type=orm.Dict,
+        spec.input("qe.dft.supercell.parameters", valid_type=orm.Dict, required=False,
             help="Parameters for the PWSCF calcuations. Some will be set automatically")
         spec.input("qe.dft.supercell.scheduler_options", valid_type=orm.Dict,
             help="Scheduler options for the PW.x calculations")
@@ -81,28 +82,19 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             help="The pseudopotential family for use with the code")
 
         # DFT inputs (PW.x) for the unitcell calculation for the dielectric constant
-        spec.input("qe.dft.unitcell.code",
-            valid_type=orm.Code,
+        spec.input("qe.dft.unitcell.code", valid_type=orm.Code,
             help="The pw.x code to use for the calculations")
-#        spec.input("qe.dft.unitcell.kpoints",
-#            valid_type=orm.KpointsData,
-#            help="The k-point grid to use for the calculations")
         spec.input("qe.dft.unitcell.parameters",
-            valid_type=orm.Dict,
+            valid_type=orm.Dict, required=False,
             help="Parameters for the PWSCF calcuations. Some will be set automatically")
         spec.input("qe.dft.unitcell.scheduler_options",
             valid_type=orm.Dict,
             help="Scheduler options for the PW.x calculations")
-#        spec.input_namespace("qe.dft.unitcell.pseudopotentials",
-#            valid_type=orm.UpfData,
-#            dynamic=True,
-#            help="The pseudopotential family for use with the code, if required")
+        spec.input("qe.dft.unitcell.settings", valid_type=orm.Dict,
+            help="Settings for the PW.x calculations")
         spec.input("qe.dft.unitcell.pseudopotential_family", valid_type=orm.Str,
             help="The pseudopotential family for use with the code")
     
-        spec.input('k_points_distance', valid_type=orm.Float, required=False, default=lambda: orm.Float(0.2),
-            help='distance (in 1/Angstrom) between adjacent kpoints')
-
         # Postprocessing inputs (PP.x)
         spec.input("qe.pp.code",
             valid_type=orm.Code,
@@ -158,80 +150,104 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
 
         self.report("Setting up the Gaussian Countercharge correction workchain")
         
-        kpoints = orm.KpointsData()
-        kpoints.set_cell_from_structure(self.inputs.host_structure)
-        kpoints.set_kpoints_mesh_from_density(self.inputs.k_points_distance.value)
+        relax_type = {'fixed': RelaxType.NONE, 'relax': RelaxType.POSITIONS, 'vc-relax': RelaxType.POSITIONS_CELL}
 
-        inputs = {
-            'pw':{
-                'code' : self.inputs.qe.dft.supercell.code,
-                #'pseudos': get_pseudos_from_structure(self.inputs.unitcell, self.inputs.qe.dft.unitcell.pseudopotential_family.value),
-                'metadata' : self.inputs.qe.dft.supercell.scheduler_options.get_dict(),
-                'settings' : self.inputs.qe.dft.supercell.settings,
-            },
-            'kpoints': kpoints,
-        }
+        overrides = {
+                'base':{
+                    # 'pseudo_family': self.inputs.qe.dft.supercell.pseudopotential_family.value,
+                    'pw': {
+                    	'parameters': {},
+                        # 'metadata': self.inputs.qe.dft.supercell.scheduler_options.get_dict(),
+                        'settings': self.inputs.qe.dft.supercell.settings.get_dict(),
+                        }
+                    },
+                'base_final_scf':{
+                    # 'pseudo_family': self.inputs.qe.dft.supercell.pseudopotential_family.value,
+                    'pw': {
+                    	'parameters': {},
+                        # 'metadata': self.inputs.qe.dft.supercell.scheduler_options.get_dict(),
+                        'settings': self.inputs.qe.dft.supercell.settings.get_dict(),
+                        }
+                    },
+                'clean_workdir' : orm.Bool(False),
+                }
 
-#        pw_inputs = self.inputs.qe.dft.supercell.code.get_builder()
-#        pw_inputs.pseudos = self.inputs.qe.dft.supercell.pseudopotentials
-#        pw_inputs.kpoints = self.inputs.qe.dft.supercell.kpoints
-#        pw_inputs.metadata = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
-#        pw_inputs.settings = self.inputs.qe.dft.supercell.settings
-        
-        parameters = self.inputs.qe.dft.supercell.parameters.get_dict()
-
-        # We set 'tot_charge' later so throw an error if the user tries to set it to avoid
-        # any ambiguity or unseen modification of user input
-        if 'tot_charge' in parameters['SYSTEM']:
-            self.report('You cannot set the "tot_charge" PW.x parameter explicitly')
-            return self.exit_codes.ERROR_PARAMETER_OVERRIDE
+        if 'pseudopotential_family' in self.inputs.qe.dft.supercell:
+        	overrides['base']['pseudo_family'] = self.inputs.qe.dft.supercell.pseudopotential_family.value
+        	overrides['base_final_scf']['pseudo_family'] = self.inputs.qe.dft.supercell.pseudopotential_family.value
+        if 'parameters' in self.inputs.qe.dft.supercell:
+            overrides['base']['pw']['parameters'] = self.inputs.qe.dft.supercell.parameters.get_dict()
+            overrides['base_final_scf']['pw']['parameters'] = self.inputs.qe.dft.supercell.parameters.get_dict()
+        # else:
+        #     overrides['base']['pw']['parameters'] = {}
+        #     overrides['base_final_scf']['pw']['parameters'] = {}
 
         # Host structure
         if self.inputs.run_pw_host:
-            pseudos = get_pseudos_from_structure(self.inputs.host_structure, self.inputs.qe.dft.supercell.pseudopotential_family.value)
-            parameters['SYSTEM']['tot_charge'] = orm.Float(0.)
-            inputs['pw']['parameters'] = orm.Dict(dict=parameters)
-            inputs['pw']['structure'] = self.inputs.host_structure
-            inputs['pw']['pseudos'] = pseudos
+            inputs = PwRelaxWorkChain.get_builder_from_protocol(
+                    code = self.inputs.qe.dft.supercell.code,
+                    structure = self.inputs.host_structure,
+                    overrides = overrides,
+                    relax_type = relax_type[self.inputs.relaxation_scheme.value]
+                    )
 
-            future = self.submit(PwBaseWorkChain, **inputs)
+            inputs['base']['pw']['metadata'] = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
+            inputs['base']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
+            inputs['base_final_scf']['pw']['metadata'] = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
+            inputs['base_final_scf']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
+
+            #future = self.submit(PwRelaxWorkChain, **inputs)
+            future = self.submit(inputs)
             self.report(
-                'Launching PWSCF for host structure (PK={}) with charge {} (PK={})'
+                'Launching PWSCF for the host structure (PK={}) with charge {} (PK={})'
                 .format(self.inputs.host_structure.pk, "0.0", future.pk))
             self.to_context(**{'calc_host': future})
-        
+
         # Defect structure; neutral charge state
         if self.inputs.run_pw_defect_q0:
-            pseudos = get_pseudos_from_structure(self.inputs.defect_structure, self.inputs.qe.dft.supercell.pseudopotential_family.value)
-            parameters['SYSTEM']['tot_charge'] = orm.Float(0.)
-            parameters['SYSTEM']['nspin'] = 2
-            parameters['SYSTEM']['tot_magnetization'] = 0.0
-            inputs['pw']['parameters'] = orm.Dict(dict=parameters)
-            inputs['pw']['structure'] = self.inputs.defect_structure
-            inputs['pw']['pseudos'] = pseudos
+            inputs = PwRelaxWorkChain.get_builder_from_protocol(
+                    code = self.inputs.qe.dft.supercell.code,
+                    structure = self.inputs.defect_structure,
+                    overrides = overrides,
+                    relax_type = relax_type[self.inputs.relaxation_scheme.value]
+                    )
 
-            future = self.submit(PwBaseWorkChain, **inputs)
+            inputs['base']['pw']['metadata'] = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
+            inputs['base']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
+            inputs['base_final_scf']['pw']['metadata'] = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
+            inputs['base_final_scf']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
+
+            #future = self.submit(PwRelaxWorkChain, **inputs)
+            future = self.submit(inputs)
             self.report(
-                'Launching PWSCF for defect structure (PK={}) with charge {} (PK={})'
+                'Launching PWSCF for the defect structure (PK={}) with charge {} (PK={})'
                 .format(self.inputs.defect_structure.pk, "0.0", future.pk))
             self.to_context(**{'calc_defect_q0': future})
 
         # Defect structure; target charge state
         if self.inputs.run_pw_defect_q:
-            pseudos = get_pseudos_from_structure(self.inputs.defect_structure, self.inputs.qe.dft.supercell.pseudopotential_family.value)
-            parameters['SYSTEM']['tot_charge'] = self.inputs.defect_charge.value
-            parameters['SYSTEM']['nspin'] = 2
-            parameters['SYSTEM']['tot_magnetization'] = 0.0
-            inputs['pw']['parameters'] = orm.Dict(dict=parameters)
-            inputs['pw']['structure'] = self.inputs.defect_structure
-            inputs['pw']['pseudos'] = pseudos
+            overrides['base']['pw']['parameters'] = recursive_merge(overrides['base']['pw']['parameters'], {'SYSTEM':{'tot_charge': self.inputs.defect_charge.value}})
+            overrides['base_final_scf']['pw']['parameters'] = recursive_merge(overrides['base_final_scf']['pw']['parameters'], {'SYSTEM':{'tot_charge': self.inputs.defect_charge.value}})
 
-            future = self.submit(PwBaseWorkChain, **inputs)
+            inputs = PwRelaxWorkChain.get_builder_from_protocol(
+                    code = self.inputs.qe.dft.supercell.code,
+                    structure = self.inputs.defect_structure,
+                    overrides = overrides,
+                    relax_type = relax_type[self.inputs.relaxation_scheme.value]
+                    )
+
+            inputs['base']['pw']['metadata'] = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
+            inputs['base']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
+            inputs['base_final_scf']['pw']['metadata'] = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
+            inputs['base_final_scf']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
+
+            #future = self.submit(PwRelaxWorkChain, **inputs)
+            future = self.submit(inputs)
             self.report(
-                'Launching PWSCF for defect structure (PK={}) with charge {} (PK={})'
+                'Launching PWSCF for the defect structure (PK={}) with charge {} (PK={})'
                 .format(self.inputs.defect_structure.pk, self.inputs.defect_charge.value, future.pk))
             self.to_context(**{'calc_defect_q': future})
-
+                
     def check_dft_calcs_gaussian_correction(self):
         """
         Check if the required calculations for the Gaussian Countercharge correction workchain
@@ -585,27 +601,54 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # executable on a specific computer. As the PH calculation may have to be run on
         # an HPC cluster, the PW calculation must be run on the same machine and so this
         # may necessitate that a different code is used than that for the supercell calculations.
-        pw_inputs = self.inputs.qe.dft.unitcell.code.get_builder()
 
-        # These are not necessarily the same as for the other DFT calculations
-        pw_inputs.pseudos = self.inputs.qe.dft.unitcell.pseudopotentials
-        pw_inputs.kpoints = self.inputs.qe.dft.unitcell.kpoints
-        pw_inputs.metadata = self.inputs.qe.dft.unitcell.scheduler_options.get_dict()
+        relax_type = {'fixed': RelaxType.NONE, 'relax': RelaxType.POSITIONS, 'vc-relax': RelaxType.POSITIONS_CELL}
 
-        pw_inputs.structure = self.inputs.host_unitcell
-        parameters = self.inputs.qe.dft.unitcell.parameters.get_dict()
-        pw_inputs.parameters = orm.Dict(dict=parameters)
+        overrides = {
+                'base':{
+                    # 'pseudo_family': self.inputs.qe.dft.unitcell.pseudopotential_family.value,
+                    'pw': {
+                    	'parameters': {},
+                        # 'metadata': self.inputs.qe.dft.unitcell.scheduler_options.get_dict(),
+                        'settings': self.inputs.qe.dft.unitcell.settings.get_dict(),
+                        }
+                    },
+                'base_final_scf':{
+                    # 'pseudo_family': self.inputs.qe.dft.unitcell.pseudopotential_family.value,
+                    'pw': {
+                    	'parameters': {},
+                        # 'metadata': self.inputs.qe.dft.unitcell.scheduler_options.get_dict(),
+                        'settings': self.inputs.qe.dft.unitcell.settings.get_dict(),
+                        }
+                    },
+                'clean_workdir' : orm.Bool(False),
+                }
 
-        future = self.submit(pw_inputs)
-        # self.report(
-        #     'Launching PWSCF for host unitcell structure (PK={})'
-        #     .format(self.inputs.host_structure.pk, future.pk)
-        # )
+        if 'pseudopotential_family' in self.inputs.qe.dft.unitcell:
+        	overrides['base']['pseudo_family'] = self.inputs.qe.dft.unitcell.pseudopotential_family.value
+        	overrides['base_final_scf']['pseudo_family'] = self.inputs.qe.dft.unitcell.pseudopotential_family.value
+        if 'parameters' in self.inputs.qe.dft.unitcell:
+            overrides['base']['pw']['parameters'] = self.inputs.qe.dft.unitcell.parameters.get_dict()
+            overrides['base_final_scf']['pw']['parameters'] = self.inputs.qe.dft.unitcell.parameters.get_dict()
+
+        inputs = PwRelaxWorkChain.get_builder_from_protocol(
+                    code = self.inputs.qe.dft.unitcell.code,
+                    structure = self.inputs.host_unitcell,
+                    overrides = overrides,
+                    relax_type = relax_type[self.inputs.relaxation_scheme.value]
+                    )
+
+        inputs['base']['pw']['metadata'] = self.inputs.qe.dft.unitcell.scheduler_options.get_dict()
+        inputs['base']['pw']['settings'] = self.inputs.qe.dft.unitcell.settings
+        inputs['base_final_scf']['pw']['metadata'] = self.inputs.qe.dft.unitcell.scheduler_options.get_dict()
+        inputs['base_final_scf']['pw']['settings'] = self.inputs.qe.dft.unitcell.settings
+
+        #future = self.submit(PwRelaxWorkChain, **inputs)
+        future = self.submit(inputs)
         self.report(
-            'Launching PWSCF for host unitcell structure (PK={})'.format(self.inputs.host_unitcell.pk, future.pk))
+            'Launching PWSCF for host unitcell structure (PK={}) at node (PK={})'.
+            format(self.inputs.host_unitcell.pk, future.pk))
         self.to_context(**{'calc_host_unitcell': future})
-
-        # return ToContext(**{'calc_host_unitcell': future})
 
     def check_hostcell_calc_for_dfpt(self):
         """
