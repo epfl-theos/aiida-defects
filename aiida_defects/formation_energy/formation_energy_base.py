@@ -108,7 +108,8 @@ class FormationEnergyWorkchainBase(WorkChain):
             help="When true, exit the workchain if a fitting parameter is outside the specified tolerance.",
             default=lambda: orm.Bool(True))       
 #        spec.input('sigma', valid_type=orm.Float, required=False)
-        spec.input("cutoff", valid_type=orm.Float)
+        spec.input("epsilon", valid_type=orm.Float, help="Dielectric constant of the host", required=True)
+        spec.input("cutoff", valid_type=orm.Float, required=False)
 
         spec.input("run_dfpt", valid_type=orm.Bool)
 

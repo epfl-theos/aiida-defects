@@ -77,8 +77,6 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             help="Scheduler options for the PW.x calculations")
         spec.input("qe.dft.supercell.settings", valid_type=orm.Dict,
             help="Settings for the PW.x calculations")
-        #spec.input_namespace("qe.dft.supercell.pseudopotentials", valid_type=orm.UpfData, dynamic=True,
-        #    help="The pseudopotential family for use with the code, if required")
         spec.input("qe.dft.supercell.pseudopotential_family", valid_type=orm.Str,
             help="The pseudopotential family for use with the code")
 
@@ -201,7 +199,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                 'Launching PWSCF for host structure (PK={}) with charge {} (PK={})'
                 .format(self.inputs.host_structure.pk, "0.0", future.pk))
             self.to_context(**{'calc_host': future})
-
+        
         # Defect structure; neutral charge state
         if self.inputs.run_pw_defect_q0:
             pseudos = get_pseudos_from_structure(self.inputs.defect_structure, self.inputs.qe.dft.supercell.pseudopotential_family.value)

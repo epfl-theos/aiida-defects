@@ -79,7 +79,7 @@ class ChemicalPotentialWorkchain(WorkChain):
         E_hull = get_e_above_hull(self.inputs.compound.value, element_list, formation_energy_dict)
         if E_hull > 0:
             self.report('WARNING! The compound {} is predicted to be unstable. For the purpose of determining the stability region, we shift its formation energy down so that it is on the convex hull. Use with care!'.format(self.inputs.compound.value))
-            formation_energy_dict[self.inputs.compound.value] -= composition.num_atoms*(E_hull+0.005) # the factor 0.005 is added for numerical reason
+            formation_energy_dict[self.inputs.compound.value] -= composition.num_atoms*(E_hull+0.005) # the factor 0.005 is added for numerical precision to make sure that the compound is now on the convex hull
         
         self.ctx.formation_energy_dict = Dict(dict=formation_energy_dict)
 
@@ -117,7 +117,7 @@ class ChemicalPotentialWorkchain(WorkChain):
                                         self.inputs.compound, 
                                         self.inputs.tolerance
                                         )
-        #self.report('The stability corner is : {}'.format(ordered_stability_corners.get_array('data')))
+        #self.report('The stability corner is : {}'.format(self.ctx.stability_corners.get_array('data')))
         self.out("stability_corners", self.ctx.stability_corners)
 
     def get_chemical_potential(self):
