@@ -13,7 +13,7 @@ from aiida import orm
 from aiida_defects.formation_energy.potential_alignment.potential_alignment import PotentialAlignmentWorkchain
 from .model_potential.model_potential import ModelPotentialWorkchain
 from aiida_defects.formation_energy.potential_alignment.utils import get_potential_difference
-from .utils import get_total_correction, get_total_alignment, get_charge_model_fit, fit_energies, calc_correction, is_gaussian_isotrope
+from .utils import get_total_correction, get_alignment, get_total_alignment, get_charge_model_fit, fit_energies, calc_correction, is_gaussian_isotrope
 from qe_tools import CONSTANTS
 import numpy as np 
 
@@ -468,9 +468,11 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         electrostatic_correction = self.ctx.model_correction_energies['1']
 
-        total_alignment = get_total_alignment(self.ctx['alignment_q-q0_to_model'],
-                                              self.ctx['alignment_q0_to_host'],
-                                              self.inputs.defect_charge)
+        # total_alignment = get_total_alignment(self.ctx['alignment_q-q0_to_model'],
+        #                                       self.ctx['alignment_q0_to_host'],
+        #                                       self.inputs.defect_charge)
+        total_alignment = get_alignment(self.ctx['alignment_q-host_to_model'],
+        								self.inputs.defect_charge)
 
         total_correction = get_total_correction(electrostatic_correction,
                                                 total_alignment)
