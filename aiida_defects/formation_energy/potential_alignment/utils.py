@@ -69,16 +69,16 @@ def get_interpolation(input_array, target_shape):
     array = input_array.get_array(input_array.get_arraynames()[0])
     target_shape = target_shape.get_list()
 
-    # It's a bit complicated to understand map_coordinates
-    # The coordinates used to understand the data are the matrix coords of the data
-    # The coords passed are the new coords you want to interpolate for
-    # So, we meshgrid a new set of coords in units of the matrix coords of the data
+    # map_coordinates takes two parameters - an input array and a coordinates
+    # array. It then evaluates what the interpolation of the input array should be
+    # at the target coordinates.
+    # Generate the target grid.
     i = np.linspace(0, array.shape[0]-1, target_shape[0])
     j = np.linspace(0, array.shape[1]-1, target_shape[1])
     k = np.linspace(0, array.shape[2]-1, target_shape[2])
-
-    ii,jj,kk = np.meshgrid(i,j,k)
+    ii,jj,kk = np.meshgrid(i,j,k, indexing='ij')
     target_coords = np.array([ii,jj,kk])
+    # Do the interpolation
     interp_array = map_coordinates(input=np.real(array), coordinates=target_coords)
 
     interpolated_array = orm.ArrayData()
