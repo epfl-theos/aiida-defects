@@ -97,11 +97,13 @@ class FormationEnergyWorkchainBase(WorkChain):
         # Methodology
         spec.input("correction_scheme",
                    valid_type = orm.Str,
+                   default = lambda: orm.Str('none'),
                    help = "The correction scheme to apply")
 
         spec.input("use_siesta_mesh_cutoff",
                     valid_type = orm.Bool,
-                    required = True,
+                    default =lambda: orm.Bool(False),
+                    required = False,
                     help = "Whether use Siesta Mesh size to Generate the Model Potential or Not ")
         spec.input("siesta_grid",
                     valid_type = orm.ArrayData,
@@ -162,16 +164,9 @@ class FormationEnergyWorkchainBase(WorkChain):
                 return self.exit_codes.ERROR_INVALID_CORRECTION
 
     def if_run_dfpt(self):
+        """
+        """
         return self.inputs.run_dfpt
-
-#    def correction_required(self):
-#        """
-#        Check if correction is requested
-#        """
-#        if self.inputs.correction_scheme is not None:
-#            return True
-#        else:
-#            return False
 
     def correction_required(self):
         """
@@ -181,8 +176,19 @@ class FormationEnergyWorkchainBase(WorkChain):
         if self.inputs.correction_scheme=="gaussian-model" or self.inputs.correction_scheme=="point" or self.inputs.correction_scheme=="gaussian-rho":
             self.report("The (" + str(self.inputs.correction_scheme.value) +") Corrections will be applied!")
             return True
-        else:
+        if self.inputs.correction_scheme=="none":
             self.report("Ther will be no Corrections applied")
+            return False
+
+
+    def is_charged_system(self):
+        """
+        """
+        if self.inputs.defect_charge is not None:
+            self.report(f"System IS CHARGED with q={self.inputs.defect_charge.value}")
+            return True
+        else:
+            self.report(f"System IS NOT CHARGED")
             return False
 
 

@@ -10,6 +10,70 @@ from __future__ import absolute_import
 from aiida.engine import calcfunction
 import numpy as np
 
+#----------------------------
+# Latest
+#----------------------------
+def get_output_energy_manual(path_dir,output_name):
+    """
+    Returns Energy from provided output file
+    """
+    import sisl
+    out = sisl.get_sile(path_dir / output_name )
+    energy = out.read_energy()['total']
+    return float(energy)
+
+
+def get_output_total_electrons_manual(path_dir,output_name):
+    """
+    Return Number of Electrons in System from output.out file 
+    """
+    import sisl
+    out = sisl.io.outSileSiesta(path_dir/output_name)
+    f=open(out.file)
+    a=f.readlines()
+    for line in range(len(a)):
+        if 'Total number of electrons:' in a[line]:
+            number_of_electrons = int(float(a[line].split()[4]))
+            #print  (a[line].split())
+    return number_of_electrons
+
+def get_vbm_siesta_manual_bands_new(path_dir,fdf_name, NE):
+    """
+    Calculating valence band maximum from siesta calculations"
+    """
+    import sisl
+
+    fdf =  sisl.get_sile(path_dir /fdf_name)
+    host_label = fdf.get("SystemLabel")
+    band_file_name = host_label+".bands"
+    BANDS = sisl.get_sile(path_dir/ band_file_name )
+
+    #N_electron = int(BANDS.file.read_text().split()[3])
+    N_electron = NE
+    #vb_index = int(N_electron/2) #-1  #May be A Bug!
+    vb_index = int(N_electron/2)-2 # Correct
+
+    eig_gamma=BANDS.read_data()
+
+    vbm = np.amax(eig_gamma[2][0][0][vb_index])
+    #print(vbm)
+    return vbm
+
+def get_fermi_siesta_from_fdf(path_dir,fdf_name):
+    """
+    Getting fermi level from *.EIG file"
+    """
+    import sisl
+
+    fdf = sisl.get_sile(path_dir / fdf_name)
+    fermi = fdf.read_fermi_level()
+
+    return fermi
+
+
+#-----------------------------
+# Old 
+#-----------------------------
 def get_vbm(calc_node):
     N_electron = calc_node.res.number_of_electrons
     vb_index = int(N_electron/2)-1
@@ -171,51 +235,3 @@ def output_total_electrons_manual(Remote_node):
     return number_of_electrons
 
 
-# def run_pw_calculation(pw_inputs, charge, run_type, additional_inputs=None):
-#     """
-#     Run a QuantumESPRESSO PW.x calculation by invoking the PW workchain
-
-#     Parameters
-#     ----------
-#     pw_inputs : AiiDA Dict
-#         A  : AiiDA Float
-#         The required total system charge. Adding an electron is negative by convention
-#     run_type: AiiDA String
-#         The desired type of calculation. Allowed values: 'scf', 'relax', 'vc-relax'
-
-#     Returns
-#     -------
-#     pw_object?
-#         A future representing the submitted calculation
-#     """
-
-#     required_keys = [
-#         'code', 'pseudos', 'parameters', 'settings', 'metadata',
-#         'structure'
-#     ]
-
-#     # Validate builder dictionary
-#     for key in required_keys:
-#         if key not in pw_inputs:
-#             raise KeyError(
-#                 "Required key, '{}' not found in input dictionary".format(key))
-
-#     # Validate 'run_type'
-#     if run_type not in ['scf', 'relax', 'vc-relax']:
-#         raise ValueError("Run type, '{}', not recognised".format(run_type))
-
-#     builder['parameters']['SYSTEM']['tot_charge'] = charge
-
-#     if run_type == 'relax' or run_type == 'vc-relax':
-#         pw_inputs['relaxation_scheme'] = run_type
-#         running = submit(PwRelaxWorkChain, **inputs)
-#         self.report(
-#             'Launching PwRelaxWorkChain for structure, {}, with charge {} (PK={})'
-#             .format(pw_inputs.structure, charge, running.pid))
-#         return running
-#     else:
-#         future = submit(PwBaseWorkChain, **inputs)
-#         self.report(
-#             'Launching PwBaseWorkChain for structure, {}, with charge {} (PK={})'
-#             .format(pw_inputs.structure, charge, future.pid))s
-#         return future
