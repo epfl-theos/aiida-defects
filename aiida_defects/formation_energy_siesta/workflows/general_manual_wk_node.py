@@ -16,16 +16,19 @@ from aiida_siesta.workflows.base import SiestaBaseWorkChain
 #from aiida_siesta.calculations.tkdict import FDFDict
 
 from aiida_defects.formation_energy_siesta.formation_energy_base import FormationEnergyWorkchainBase
-from .utils import get_raw_formation_energy 
-from .utils import get_corrected_formation_energy
-from .utils import get_corrected_aligned_formation_energy
-
+from aiida_defects.formation_energy_siesta.utils import get_raw_formation_energy 
+from aiida_defects.formation_energy_siesta.utils import get_corrected_formation_energy
+from aiida_defects.formation_energy_siesta.utils import get_corrected_aligned_formation_energy
+import pathlib
 import numpy as np
 
 class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
     """
     Compute the formation energy for a given defect using SIESTA code
     """
+    print("Formatioan Energy Worchain for Siesta Loaded")
+    print("For Charged Systems with WK Node")
+    
     @classmethod
     def define(cls, spec):
         super(FormationEnergyWorkchainSIESTAManual, cls).define(spec)
@@ -53,43 +56,48 @@ class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
                     valid_type=orm.Int,
                     help="Restart from interrupted defect workchain",
                     required=False )
- 
-
-        spec.input('host_node', valid_type = orm.Int, required = False)
-        spec.input('defect_q0_node', valid_type = orm.Int, required = False)
-        spec.input('defect_q_node', valid_type = orm.Int, required = False)
         
         #===================================================================
         # The Outputs of Workflow
         #===================================================================
-        spec.output('host_structure',valid_type=orm.StructureData)
-        spec.output('defect_q0_structure',valid_type=orm.StructureData)
-        spec.output('defect_q_structure',valid_type=orm.StructureData)
-        spec.output('host_structure_wk_pk',valid_type=orm.Int)
-        spec.output('defect_q0_structure_wk_pk',valid_type=orm.Int)
-        spec.output('defect_q_structure_wk_pk',valid_type=orm.Int)
+
+        spec.output('host_structure', valid_type=orm.StructureData, required=True)
+        spec.output('defect_q0_structure', valid_type=orm.StructureData,required=True)
+        spec.output('defect_q_structure', valid_type=orm.StructureData, required=False)
+        spec.output('host_structure_wk_pk', valid_type=orm.Int, required=True)
+        spec.output('defect_q0_structure_wk_pk', valid_type=orm.Int, required=True) 
+        spec.output('defect_q_structure_wk_pk', valid_type=orm.Int, required=False)
 
         #===================================================================
         # The Steps of Workflow
         #===================================================================
 
         spec.outline(cls.setup,
-                     if_(cls.is_restart)( 
-                         cls.is_relaxation_restart,
-                         cls.relaxation_restart,
-                         ).else_(
-                                 cls.relax_structures),
-                     cls.check_relaxation,
-                     cls.retrieving_dft_data,
-                     #cls.check_dft_potentials,
-                     if_(cls.correction_required)(
-                                                  if_(cls.is_gaussian_model_scheme)(
-                        #cls.check_dft_potentials_gaussian_correction,
-                        cls.run_gaussian_model_correction_workchain,
-                        cls.check_gaussian_model_correction_workchain,
-                        cls.compute_formation_energy_gaussian_model
-                        )).else_(
-                                 cls.compute_no_corrected_formation_energy,
+                     if_(cls.is_charged_system)(
+                         cls.is_calculate_rho,
+                         if_(cls.is_restart)( 
+                             cls.is_relaxation_restart,
+                             cls.relaxation_restart,
+                             ).else_(cls.relax_structures),
+                             cls.check_relaxation,
+                             cls.retrieving_dft_data,
+                             cls.retrieving_dft_potentials,
+                             if_(cls.is_retrieving_dft_rhos)(
+                                 cls.retrieving_dft_rhos),
+                             if_(cls.correction_required)(
+                                 if_(cls.is_gaussian_model_scheme)(
+                                     #cls.check_dft_potentials_gaussian_correction,
+                                     cls.run_gaussian_model_correction_workchain,
+                                     cls.check_gaussian_model_correction_workchain,
+                                     cls.compute_formation_energy_gaussian_model)
+                                     ).else_(cls.compute_no_corrected_formation_energy),
+                                     ).else_(if_(cls.is_restart)( 
+                                                 cls.is_relaxation_restart,
+                                                 cls.relaxation_restart,
+                                                ).else_(cls.relax_structures),
+                                                        cls.check_relaxation,
+                                                        cls.retrieving_dft_data,
+                                            cls.compute_no_corrected_formation_energy,
                             ))
                 
     
@@ -97,6 +105,26 @@ class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
         spec.exit_code(200,'ERROR_MAIN_WC',
             message='The end-point relaxation SiestaBaseWorkChain failed')
 
+    #======================================================
+    # Some  ... Parts
+    #======================================================
+    def is_calculate_rho(self):
+        """
+        """
+        if self.inputs.correction_scheme == 'rho' or self.inputs.correction_scheme == 'gaussian-rho':
+            self.report("Will calculate DFT RHO")
+            self.is_rho = True
+        else:
+            self.is_rho =  False
+
+    def is_retrieving_dft_rhos(self):
+        ""
+        ""
+        if self.is_rho:
+            return True
+        else:
+            return False
+   
     #======================================================
     # Restarting Parts
     #======================================================
@@ -252,6 +280,13 @@ class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
         self.report('Preparing Host Strcuture to Relax')
         inputs = self.exposed_inputs(SiestaBaseWorkChain, namespace='host')
         inputs['structure'] = self.inputs.host_structure
+        inputs_parameters = Dict(dict=self.inputs.host.parameters.get_dict())
+        VT = dict={'SaveTotalPotential':True}
+        inputs_parameters.update_dict(VT)
+        if self.is_rho:
+            RHO = dict={'SaveRho':True}
+            inputs_parameters.update_dict(RHO)
+        inputs['parameters'] = inputs_parameters 
         running = self.submit(SiestaBaseWorkChain, **inputs)
         self.report(f'Launched SiestaBaseWorkChain<{running.pk}> to relax the host structure.')
         calculations ['host_relaxation_wk'] = running
@@ -260,6 +295,13 @@ class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
         self.report('Preparing Defect q0 Structure to Relax')
         inputs = self.exposed_inputs(SiestaBaseWorkChain, namespace='defect_q0')
         inputs['structure'] = self.inputs.defect_structure
+        inputs_parameters = Dict(dict=self.inputs.defect_q0.parameters.get_dict())
+        VT = dict={'SaveTotalPotential':True}
+        inputs_parameters.update_dict(VT)
+        if self.is_rho:
+            RHO = dict={'SaveRho':True}
+            inputs_parameters.update_dict(RHO)
+        inputs['parameters'] = inputs_parameters 
         running = self.submit(SiestaBaseWorkChain, **inputs)
         self.report(f'Launched SiestaBaseWorkChain<{running.pk}> to relax the defect q0 structure.')
         calculations ['defect_q0_relaxation_wk'] = running
@@ -271,8 +313,12 @@ class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
         inputs_parameters = Dict(dict=self.inputs.defect_q.parameters.get_dict())
         net_charge = dict={'NetCharge':self.inputs.defect_charge.value}
         inputs_parameters.update_dict(net_charge)
+        VT = dict={'SaveTotalPotential':True}
+        inputs_parameters.update_dict(VT)
+        if self.is_rho:
+            RHO = dict={'SaveRho':True}
+            inputs_parameters.update_dict(RHO)
         inputs['parameters'] = inputs_parameters 
-        
         running = self.submit(SiestaBaseWorkChain, **inputs)
         self.report(f'Launched SiestaBaseWorkChain<{running.pk}> to relax the defect q structure.')
         calculations ['defect_q_relaxation_wk'] = running
@@ -321,7 +367,7 @@ class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
             else:
                 self.ctx.defect_q_structure = defect_q_wk.outputs.output_structure
                 self.out('defect_q_structure',self.ctx.defect_q_structure)
-                self.report(f"Defect q0 Structure Relaxation WK is Okay With PK {self.ctx.defect_q_structure.pk}")
+                self.report(f"Defect q Structure Relaxation WK is Okay With PK {self.ctx.defect_q_structure.pk}")
 
 
         if not host_wk.is_finished_ok or not defect_q0_wk.is_finished_ok or not defect_q_wk.is_finished_ok:
@@ -377,27 +423,25 @@ class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
         #self.report(f"DEBUG: VBM = {self.ctx.defet_q_vbm.value} ")
         self.report(f"The Energy of Defect q is : {self.ctx.defect_q_energy.value } eV")
 
-        self.ctx.defect_energy = self.ctx.defect_q0_energy
+        self.ctx.defect_energy = self.ctx.defect_q_energy
 
     def retrieving_dft_potentials(self):
         """
         """
         import sisl
-        from .utils import get_vbm_siesta_manual_bands
-        from .utils import output_energy_manual
-        from .utils import output_total_electrons_manual
         
         # For Host
-        if is_relax_host :
+        if self.is_relax_host :
             host_calc = self.ctx.host_relaxation_wk 
             self.report(f"Extracting SIESTA Potentials for host structure with charge 0 from node")
         else:
+            wk_node = orm.load_node(self.inputs.wk_node.value)
             host_calc = orm.load_node(wk_node.outputs.host_structure_wk_pk.value)
             self.report(f"Extracting SIESTA Potentials for host structure with charge 0 from node PK={wk_node.outputs.host_structure_wk_pk.value}")
         label = 'aiida'
         lVT = label+'.VT'
-        lnc = label+'.nc'
-        path = host_calc.outputs.remote_folder.get_remote_path()
+        lnc = 'ElectrostaticPotential.grid.nc'
+        path = pathlib.Path( host_calc.outputs.remote_folder.get_remote_path())
         if (path / lVT).exists():
             VT = path / lVT
         elif (path/lnc).exists():
@@ -406,7 +450,6 @@ class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
             self.exit_codes.ERROR_MAIN_WC
 
         data_array = sisl.get_sile(VT)
-        #data_array = sisl.get_sile(host_calc.outputs.remote_folder.get_remote_path()+"/aiida.VT")
         vt = data_array.read_grid()
         vt_data = orm.ArrayData()
         vt_data_grid = orm.ArrayData()
@@ -415,8 +458,168 @@ class FormationEnergyWorkchainSIESTAManual(FormationEnergyWorkchainBase):
         self.ctx.v_host = vt_data
         self.ctx.v_host_grid = vt_data_grid
         self.report(f"DEBUG: The host VT file Read!")
-        self.report(f"DEBUG: VT Array = {self.ctx.v_host}")
+        #self.report(f"DEBUG: VT Array = {self.ctx.v_host}")
         self.report(f"DEBUG: VT Array Shape = {self.ctx.v_host_grid.get_array('grid')} ")
+
+        # For Defect q0
+        if self.is_relax_defect_q0 :
+            defect_q0_calc = self.ctx.defect_q0_relaxation_wk
+            self.report(f"Extracting SIESTA Potentials for Defect q0 structure with charge 0 from node")
+        else:
+            wk_node = orm.load_node(self.inputs.wk_node.value)
+            defect_q0_calc = orm.load_node(wk_node.outputs.defect_q0_structure_wk_pk.value)
+            self.report(f"Extracting SIESTA Potentials for host structure with charge 0 from node PK={wk_node.outputs.defect_q0_structure_wk_pk.value}")
+        label = 'aiida'
+        lVT = label+'.VT'
+        lnc = 'ElectrostaticPotential.grid.nc'
+        path = pathlib.Path( defect_q0_calc.outputs.remote_folder.get_remote_path())
+        if (path / lVT).exists():
+            VT = path / lVT
+        elif (path/lnc).exists():
+            VT = path / lnc
+        else:
+            self.exit_codes.ERROR_MAIN_WC
+
+        data_array = sisl.get_sile(VT)
+        vt = data_array.read_grid()
+        vt_data = orm.ArrayData()
+        vt_data_grid = orm.ArrayData()
+        vt_data.set_array('data', vt.grid) # The array
+        vt_data_grid.set_array('grid',np.array(vt.shape)) # The Grid Shape
+        self.ctx.v_defect_q0 = vt_data
+        self.ctx.v_defect_q0_grid = vt_data_grid
+        self.report(f"DEBUG: The Defect q0 VT file Read!")
+        #self.report(f"DEBUG: VT Array = {self.ctx.v_host}")
+        self.report(f"DEBUG: VT Array Shape = {self.ctx.v_defect_q0_grid.get_array('grid')} ")
+
+        # For Defect q
+        if self.is_relax_defect_q :
+            defect_q_calc = self.ctx.defect_q_relaxation_wk
+            self.report(f"Extracting SIESTA Potentials for Defect q structure with charge 0 from node")
+        else:
+            wk_node = orm.load_node(self.inputs.wk_node.value)
+            defect_q_calc = orm.load_node(wk_node.outputs.defect_q_structure_wk_pk.value)
+            self.report(f"Extracting SIESTA Potentials for host structure with charge 0 from node PK={wk_node.outputs.defect_q_structure_wk_pk.value}")
+        label = 'aiida'
+        lVT = label+'.VT'
+        lnc = 'ElectrostaticPotential.grid.nc'
+        path = pathlib.Path( defect_q_calc.outputs.remote_folder.get_remote_path())
+        if (path / lVT).exists():
+            VT = path / lVT
+        elif (path/lnc).exists():
+            VT = path / lnc
+        else:
+            self.exit_codes.ERROR_MAIN_WC
+
+        data_array = sisl.get_sile(VT)
+        vt = data_array.read_grid()
+        vt_data = orm.ArrayData()
+        vt_data_grid = orm.ArrayData()
+        vt_data.set_array('data', vt.grid) # The array
+        vt_data_grid.set_array('grid',np.array(vt.shape)) # The Grid Shape
+        self.ctx.v_defect_q = vt_data
+        self.ctx.v_defect_q_grid = vt_data_grid
+        self.report(f"DEBUG: The Defect q VT file Read!")
+        #self.report(f"DEBUG: VT Array = {self.ctx.v_host}")
+        self.report(f"DEBUG: VT Array Shape = {self.ctx.v_defect_q_grid.get_array('grid')} ")
+
+    def retrieving_dft_rhos(self):
+        """
+        """
+        import sisl
+        
+        # For Host
+        if self.is_relax_host :
+            host_calc = self.ctx.host_relaxation_wk 
+            self.report(f"Extracting SIESTA Rho for host structure with charge 0 from node")
+        else:
+            wk_node = orm.load_node(self.inputs.wk_node.value)
+            host_calc = orm.load_node(wk_node.outputs.host_structure_wk_pk.value)
+            self.report(f"Extracting SIESTA Potentials for host structure with charge 0 from node PK={wk_node.outputs.host_structure_wk_pk.value}")
+        label = 'aiida'
+        lRHO = label+'.RHO'
+        lnc = 'Rho.grid.nc'
+        path = pathlib.Path( host_calc.outputs.remote_folder.get_remote_path())
+        if (path / lRHO).exists():
+            RHO = path / lRHO
+        elif (path/lnc).exists():
+            RHO = path / lnc
+        else:
+            self.exit_codes.ERROR_MAIN_WC
+
+        data_array = sisl.get_sile(RHO)
+        rho = data_array.read_grid()
+        rho_data = orm.ArrayData()
+        rho_data_grid = orm.ArrayData()
+        rho_data.set_array('data', rho.grid) # The array
+        rho_data_grid.set_array('grid',np.array(rho.shape)) # The Grid Shape
+        self.ctx.rho_host = rho_data
+        self.ctx.rho_host_grid = rho_data_grid
+        self.report(f"DEBUG: The host Rho file Read!")
+        #self.report(f"DEBUG: VT Array = {self.ctx.v_host}")
+        self.report(f"DEBUG: Rho Array Shape = {self.ctx.rho_host_grid.get_array('grid')} ")
+
+        # For Defect q0
+        if self.is_relax_defect_q0 :
+            defect_q0_calc = self.ctx.defect_q0_relaxation_wk
+            self.report(f"Extracting SIESTA Potentials for Defect q0 structure with charge 0 from node")
+        else:
+            wk_node = orm.load_node(self.inputs.wk_node.value)
+            defect_q0_calc = orm.load_node(wk_node.outputs.defect_q0_structure_wk_pk.value)
+            self.report(f"Extracting SIESTA Potentials for host structure with charge 0 from node PK={wk_node.outputs.defect_q0_structure_wk_pk.value}")
+        label = 'aiida'
+        lRHO = label+'.RHO'
+        lnc = 'Rho.grid.nc'
+        path = pathlib.Path( defect_q0_calc.outputs.remote_folder.get_remote_path())
+        if (path / lRHO).exists():
+            RHO = path / lRHO
+        elif (path/lnc).exists():
+            RHO = path / lnc
+        else:
+            self.exit_codes.ERROR_MAIN_WC
+
+        data_array = sisl.get_sile(RHO)
+        rho = data_array.read_grid()
+        rho_data = orm.ArrayData()
+        rho_data_grid = orm.ArrayData()
+        rho_data.set_array('data', rho.grid) # The array
+        rho_data_grid.set_array('grid',np.array(rho.shape)) # The Grid Shape
+        self.ctx.rho_defect_q0 = rho_data
+        self.ctx.rho_defect_q0_grid = rho_data_grid
+        self.report(f"DEBUG: The Defect q0 Rho file Read!")
+        #self.report(f"DEBUG: VT Array = {self.ctx.v_host}")
+        self.report(f"DEBUG: Rho Array Shape = {self.ctx.rho_defect_q0_grid.get_array('grid')} ")
+
+        # For Defect q
+        if self.is_relax_defect_q :
+            defect_q_calc = self.ctx.defect_q_relaxation_wk
+            self.report(f"Extracting SIESTA Potentials for Defect q structure with charge 0 from node")
+        else:
+            wk_node = orm.load_node(self.inputs.wk_node.value)
+            defect_q_calc = orm.load_node(wk_node.outputs.defect_q_structure_wk_pk.value)
+            self.report(f"Extracting SIESTA Potentials for host structure with charge 0 from node PK={wk_node.outputs.defect_q_structure_wk_pk.value}")
+        label = 'aiida'
+        lRHO = label+'.RHO'
+        lnc = 'Rho.grid.nc'
+        path = pathlib.Path( defect_q_calc.outputs.remote_folder.get_remote_path())
+        if (path / lRHO).exists():
+            RHO = path / lRHO
+        elif (path/lnc).exists():
+            RHO = path / lnc
+        else:
+            self.exit_codes.ERROR_MAIN_WC
+
+        data_array = sisl.get_sile(RHO)
+        rho = data_array.read_grid()
+        rho_data = orm.ArrayData()
+        rho_data_grid = orm.ArrayData()
+        rho_data.set_array('data', rho.grid) # The array
+        rho_data_grid.set_array('grid',np.array(rho.shape)) # The Grid Shape
+        self.ctx.rho_defect_q = rho_data
+        self.ctx.rho_defect_q_grid = rho_data_grid
+        self.report(f"DEBUG: The Defect q Rho file Read!")
+        #self.report(f"DEBUG: VT Array = {self.ctx.v_host}")
+        self.report(f"DEBUG: Rho Array Shape = {self.ctx.rho_defect_q_grid.get_array('grid')} ")
 
 
 

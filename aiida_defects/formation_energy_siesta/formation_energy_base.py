@@ -109,15 +109,9 @@ class FormationEnergyWorkchainBase(WorkChain):
                     valid_type = orm.ArrayData,
                     required = False)
         # Outputs
-        spec.output(
-            "formation_energy_uncorrected", valid_type=orm.Float, required=True
-        )
-        spec.output(
-            "formation_energy_corrected", valid_type=orm.Float, required=True
-        )
-        spec.output(
-            "formation_energy_corrected_aligned", valid_type=orm.Float, required=True
-        )
+        spec.output("formation_energy_uncorrected", valid_type=orm.Float, required=True)
+        spec.output("formation_energy_corrected", valid_type=orm.Float, required=False  )
+        spec.output("formation_energy_corrected_aligned", valid_type=orm.Float, required=False)
 
         # Error codes
         spec.exit_code(201, "ERROR_INVALID_CORRECTION",
@@ -156,13 +150,14 @@ class FormationEnergyWorkchainBase(WorkChain):
         """
         Setup the workchain
         """
-
-        # Check if correction scheme is valid:
-        correction_schemes_available = ["gaussian-model","gaussian-rho", "point","none"]
+        self.report("Check if correction scheme is valid!")
+        # Check if correction scheme is valid
+        correction_schemes_available = ["gaussian-model","gaussian-rho", "point","rho","none"]
         if self.inputs.correction_scheme is not None:
             if self.inputs.correction_scheme not in correction_schemes_available:
                 return self.exit_codes.ERROR_INVALID_CORRECTION
 
+       
     def if_run_dfpt(self):
         """
         """
@@ -174,7 +169,7 @@ class FormationEnergyWorkchainBase(WorkChain):
         """
         #if self.inputs.correction_scheme is not None:
         if self.inputs.correction_scheme=="gaussian-model" or self.inputs.correction_scheme=="point" or self.inputs.correction_scheme=="gaussian-rho":
-            self.report("The (" + str(self.inputs.correction_scheme.value) +") Corrections will be applied!")
+            self.report(f"The {self.inputs.correction_scheme.value)} Corrections will be applied!")
             return True
         if self.inputs.correction_scheme=="none":
             self.report("Ther will be no Corrections applied")
@@ -184,7 +179,7 @@ class FormationEnergyWorkchainBase(WorkChain):
     def is_charged_system(self):
         """
         """
-        if self.inputs.defect_charge is not None:
+        if self.inputs.defect_charge.value > 0 or self.inputs.defect_charge.value < 0 :
             self.report(f"System IS CHARGED with q={self.inputs.defect_charge.value}")
             return True
         else:
@@ -325,20 +320,12 @@ class FormationEnergyWorkchainBase(WorkChain):
         self.report("Checking Gaussian Model Correction Workchain ...")
         correction_wc = self.ctx["correction_workchain"]
         if not correction_wc.is_finished_ok:
-            self.report(
-                "Correction workchain failed with status {}".format(
-                    correction_wc.exit_status
-                )
-            )
+            self.report(f"Correction workchain failed with status {correction_wc.exit_status}" )
             return self.exit_codes.ERROR_CORRECTION_WORKCHAIN_FAILED
         else:
             self.ctx.total_correction = correction_wc.outputs.total_correction
-            self.ctx.electrostatic_correction = (
-                correction_wc.outputs.electrostatic_correction
-            )
+            self.ctx.electrostatic_correction = (correction_wc.outputs.electrostatic_correction)
             self.ctx.total_alignment = correction_wc.outputs.total_alignment
-
-
 
     def check_correction_workchain(self):
         """
@@ -348,32 +335,25 @@ class FormationEnergyWorkchainBase(WorkChain):
 
         correction_wc = self.ctx["correction_workchain"]
         if not correction_wc.is_finished_ok:
-            self.report(
-                "Correction workchain failed with status {}".format(
-                    correction_wc.exit_status
-                )
-            )
+            self.report(f"Correction workchain failed with status {correction_wc.exit_status}")
             return self.exit_codes.ERROR_CORRECTION_WORKCHAIN_FAILED
         else:
             self.ctx.total_correction = correction_wc.outputs.total_correction
-            self.ctx.electrostatic_correction = (
-                correction_wc.outputs.electrostatic_correction
-            )
+            self.ctx.electrostatic_correction = (correction_wc.outputs.electrostatic_correction)
             self.ctx.total_alignment = correction_wc.outputs.total_alignment
 
     def run_chemical_potential_workchain(self):
-        from .chemical_potential.chemical_potential import (
-                ChemicalPotentialWorkchain, )
+        from .chemical_potential.chemical_potential import ChemicalPotentialWorkchain 
 
-        self.report('Computing the chemical potential of {}'.format(self.inputs.defect_specie.value))
-        inputs = {
-            "formation_energy_dict": self.inputs.formation_energy_dict,
-            "compound": self.inputs.compound,
-            "dependent_element": self.inputs.dependent_element,
-            "defect_specie": self.inputs.defect_specie,
-            #"ref_energy": self.inputs.ref_energy,
-            "tolerance": self.inputs.tolerance,
-        }
+        self.report(f'Computing the chemical potential of {self.inputs.defect_specie.value)}')
+        
+        inputs = {"formation_energy_dict": self.inputs.formation_energy_dict,
+                  "compound": self.inputs.compound,
+                  "dependent_element": self.inputs.dependent_element,
+                  "defect_specie": self.inputs.defect_specie,
+                  #"ref_energy": self.inputs.ref_energy,
+                  "tolerance": self.inputs.tolerance,}
+
         workchain_future = self.submit(ChemicalPotentialWorkchain, **inputs)
         label = "chemical_potential_workchain"
         self.to_context(**{label: workchain_future})
@@ -386,11 +366,7 @@ class FormationEnergyWorkchainBase(WorkChain):
 
         chem_potential_wc = self.ctx["chemical_potential_workchain"]
         if not chem_potential_wc.is_finished_ok:
-            self.report(
-                "Chemical potential workchain failed with status {}".format(
-                    chem_potential_wc.exit_status
-                )
-            )
+            self.report(f"Chemical potential workchain failed with status {chem_potential_wc.exit_status}")
             return self.exit_codes.ERROR_CHEMICAL_POTENTIAL_WORKCHAIN_FAILED
             #return self.exit_codes.ERROR_SUB_PROCESS_FAILED_CORRECTION
         else:
@@ -412,33 +388,19 @@ class FormationEnergyWorkchainBase(WorkChain):
             self.inputs.fermi_level,
             self.ctx.host_vbm
             )
-        self.report(
-            "The computed uncorrected formation energy is {} eV".format(
-                self.ctx.e_f_uncorrected.value
-            )
-        )
+        self.report(f"The computed uncorrected formation energy is {self.ctx.e_f_uncorrected.value} eV")
         self.out("formation_energy_uncorrected", self.ctx.e_f_uncorrected)
 
         # Corrected formation energy
-        self.ctx.e_f_corrected = get_corrected_formation_energy(
-            self.ctx.e_f_uncorrected, self.ctx.electrostatic_correction
-        )
-        self.report(
-            "The computed corrected formation energy is {} eV".format(
-                self.ctx.e_f_corrected.value
-            )
-        )
+        self.ctx.e_f_corrected = get_corrected_formation_energy(self.ctx.e_f_uncorrected, 
+                                                                self.ctx.electrostatic_correction)
+        self.report(f"The computed corrected formation energy is {self.ctx.e_f_corrected.value} eV")
         self.out("formation_energy_corrected", self.ctx.e_f_corrected)
 
         # Corrected formation energy with potential alignment
-        self.ctx.e_f_corrected_aligned = get_corrected_aligned_formation_energy(
-            self.ctx.e_f_corrected, self.ctx.total_alignment
-        )
-        self.report(
-            "The computed corrected formation energy, including potential alignments, is {} eV".format(
-                self.ctx.e_f_corrected_aligned.value
-            )
-        )
+        self.ctx.e_f_corrected_aligned = get_corrected_aligned_formation_energy(self.ctx.e_f_corrected, 
+                                                                                self.ctx.total_alignment)
+        self.report(f"The computed corrected formation energy, including potential alignments, is {self.ctx.e_f_corrected_aligned.value} eV")
         self.out("formation_energy_corrected_aligned", self.ctx.e_f_corrected_aligned)
  
 
@@ -456,33 +418,20 @@ class FormationEnergyWorkchainBase(WorkChain):
             self.inputs.fermi_level,
             self.ctx.host_vbm
             )
-        self.report(
-            "The computed uncorrected formation energy is {} eV".format(
-                self.ctx.e_f_uncorrected.value
-            )
-        )
+        self.report(f"The computed uncorrected formation energy is {self.ctx.e_f_uncorrected.value}  eV")
         self.out("formation_energy_uncorrected", self.ctx.e_f_uncorrected)
 
         # Corrected formation energy
-        self.ctx.e_f_corrected = get_corrected_formation_energy(
-            self.ctx.e_f_uncorrected, self.ctx.electrostatic_correction
-        )
-        self.report(
-            "The computed corrected formation energy is {} eV".format(
-                self.ctx.e_f_corrected.value
-            )
-        )
+        self.ctx.e_f_corrected = get_corrected_formation_energy(self.ctx.e_f_uncorrected, 
+                                                                self.ctx.electrostatic_correction)
+
+        self.report(f"The computed corrected formation energy is {self.ctx.e_f_corrected.value} eV")
         self.out("formation_energy_corrected", self.ctx.e_f_corrected)
 
         # Corrected formation energy with potential alignment
-        self.ctx.e_f_corrected_aligned = get_corrected_aligned_formation_energy(
-            self.ctx.e_f_corrected, self.ctx.total_alignment
-        )
-        self.report(
-            "The computed corrected formation energy, including potential alignments, is {} eV".format(
-                self.ctx.e_f_corrected_aligned.value
-            )
-        )
+        self.ctx.e_f_corrected_aligned = get_corrected_aligned_formation_energy(self.ctx.e_f_corrected, 
+                                                                                self.ctx.total_alignment)
+        self.report(f"The computed corrected formation energy, including potential alignments, is {self.ctx.e_f_corrected_aligned.value} eV")
         self.out("formation_energy_corrected_aligned", self.ctx.e_f_corrected_aligned)
     
     def compute_no_corrected_formation_energy(self):
@@ -492,7 +441,7 @@ class FormationEnergyWorkchainBase(WorkChain):
 
         self.report("Working On..")
         self.report("Computing Non Corrected Formation Energy")
-        #        # Raw formation energy
+        # Raw formation energy
         self.ctx.e_f_uncorrected = get_raw_formation_energy(
             self.ctx.defect_energy,
             self.ctx.host_energy,
@@ -500,11 +449,9 @@ class FormationEnergyWorkchainBase(WorkChain):
             self.inputs.chemical_potential,
             self.inputs.defect_charge,
             self.inputs.fermi_level,
-            self.ctx.host_vbm
-            )
-        self.report("The computed uncorrected formation energy is {} eV".format(self.ctx.e_f_uncorrected.value))
-   
-       
+            self.ctx.host_vbm )
+        self.report(f"The computed uncorrected formation energy is {self.ctx.e_f_uncorrected.value} eV")
+        self.out("formation_energy_uncorrected", self.ctx.e_f_uncorrected)
     
     def raise_not_implemented(self):
         """
