@@ -42,8 +42,8 @@ class ModelPotentialWorkchain(WorkChain):
             default=lambda: orm.Float(40.),
             help="Energy cutoff for grids in Rydberg")
         spec.input('epsilon',
-            valid_type=orm.Float,
-            help="Dielectric constant of the host material")
+            valid_type=orm.ArrayData,
+            help="Dielectric tensor (3x3) of the host material")
         spec.input('gaussian_params',
             valid_type=orm.List,
             help="A length 9 list of parameters needed to construct the "

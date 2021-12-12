@@ -39,8 +39,8 @@ class GaussianCounterChargeWorkchain(WorkChain):
             valid_type=orm.List,
             help="Defect site position in crystal coordinates.")
         spec.input("epsilon",
-            valid_type=orm.Float,
-            help="Dielectric constant for the host material.")
+            valid_type=orm.ArrayData,
+            help="Dielectric tensor (3x3) for the host material.")
         spec.input("model_iterations_required",
             valid_type=orm.Int,
             default=lambda: orm.Int(3),
@@ -422,7 +422,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         """
         Fit the calculated model energies and obtain an estimate for the isolated model energy
         """
-        
+
         if not self.ctx.is_gaussian_isotrope:
             # Get the linear dimensions of the structures
             linear_dimensions = {}
@@ -440,7 +440,9 @@ class GaussianCounterChargeWorkchain(WorkChain):
         else:
             sigma = self.ctx.sigma
             defect_charge = self.inputs.defect_charge.value
-            epsilon = self.inputs.epsilon.value
+            # Epsilon is now expected to be a tensor, and so to get a scalar here we diagonalise.
+            epsilon_tensor = self.inputs.epsilon.get_array('epsilon')
+            epsilon = np.mean(np.diag(epsilon_tensor)) # Approximation to the tensor
             self.report(
                     "Computing the energy of the isolated gaussian analytically"
             )
