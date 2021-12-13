@@ -25,6 +25,16 @@ def generate_inputs_formation_energy_qe(fixture_code, generate_structure, genera
         mock_pseudos = {'Si': generate_upf_data('Si')}
 
         inputs = {
+            'run_pw_host': Bool(True),
+            'run_pw_defect_q0': Bool(True),
+            'run_pw_defect_q': Bool(True),
+            'run_v_host': Bool(True),
+            'run_v_defect_q0': Bool(True),
+            'run_v_defect_q': Bool(True),
+            'run_rho_host': Bool(True),
+            'run_rho_defect_q0': Bool(True),
+            'run_rho_defect_q': Bool(True),
+            'run_dfpt': Bool(True),
             "host_structure": mock_structure,
             "defect_structure": mock_structure,
             "host_unitcell": mock_structure,
@@ -32,12 +42,13 @@ def generate_inputs_formation_energy_qe(fixture_code, generate_structure, genera
             'defect_species': Str('Si'),
             'defect_site': List(list=[0.5,0.5,0.5]),
             "fermi_level":  Float(1.0),
-            "add_or_remove": Str('remove'),
+            "chempot_sign": Dict(dict={}),
             "formation_energy_dict": Dict(dict={}),
             "compound": Str("SiO2"),
             "dependent_element": Str("O"),
             "correction_scheme": Str('gaussian'),
             "run_dfpt": Bool(True),
+            'epsilon' : mock_array,
             'run_pw_host': Bool(True),
             'run_pw_defect_q0': Bool(True),
             'run_pw_defect_q': Bool(True),
@@ -45,17 +56,17 @@ def generate_inputs_formation_energy_qe(fixture_code, generate_structure, genera
                 "dft": {
                     "supercell": {
                         "code": fixture_code('quantumespresso.pw'),
-                        "kpoints": mock_kpoints,
                         "parameters": mock_parameters,
                         "scheduler_options": mock_parameters,
-                        "pseudopotentials": mock_pseudos,
+                        "pseudopotential_family": Str("sssp"),
+                        "settings": mock_parameters,
                     },
                     "unitcell": {
                         "code": fixture_code('quantumespresso.pw'),
-                        "kpoints": mock_kpoints,
                         "parameters": mock_parameters,
                         "scheduler_options": mock_parameters,
-                        "pseudopotentials": mock_pseudos,
+                        "pseudopotential_family": Str("sssp"),
+                        "settings": mock_parameters,
                     },
                 },
                 "pp":{

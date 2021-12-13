@@ -24,7 +24,7 @@ def generate_inputs_gaussian_countercharge(generate_structure, generate_array_da
             'host_structure' : generate_structure(),
             'defect_charge' : Float(-2.),
             'defect_site' : List(list=[0.5,0.5,0.5]),
-            'epsilon' : Float(11.68),
+            'epsilon' : mock_array,
             'v_host' : mock_array,
             'v_defect_q0' : mock_array,
             'v_defect_q' : mock_array,

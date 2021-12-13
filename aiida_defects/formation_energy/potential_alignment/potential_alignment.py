@@ -221,9 +221,5 @@ class PotentialAlignmentWorkchain(WorkChain):
         Collect results
         """
         self.report(
-<<<<<<< HEAD
-            "Completed alignment. An alignment of {} eV is required".format(self.ctx.alignment))
-=======
             "Completed alignment. An alignment of {} eV is required".format(self.ctx.alignment.value))
->>>>>>> anisotropic_gaussian
         self.out('alignment_required', self.ctx.alignment)

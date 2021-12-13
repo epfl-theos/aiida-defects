@@ -58,12 +58,9 @@ class FormationEnergyWorkchainBase(WorkChain):
              valid_type=orm.Float,
              help="Defect charge state")
         spec.input(
-<<<<<<< HEAD
             "defect_species",
             valid_type=orm.Str)
         spec.input(
-=======
->>>>>>> anisotropic_gaussian
             "defect_site",
             valid_type=orm.List,
             help="Defect site position in crystal coordinates" )
@@ -76,13 +73,6 @@ class FormationEnergyWorkchainBase(WorkChain):
             valid_type=orm.Dict,
             help="To determine the sign of the chemical potential. The convention is that removing an atom is negative")
 
-<<<<<<< HEAD
-        # Chemical potential  # TODO: Doc all of this
-        spec.input('formation_energy_dict', valid_type=orm.Dict)
-        spec.input('compound', valid_type=orm.Str)
-        spec.input('dependent_element', valid_type=orm.Str)
-        spec.input('tolerance', valid_type=orm.Float, default=lambda: orm.Float(1E-4))
-=======
         # Chemical potential
         spec.input('run_chem_pot_wc', valid_type=orm.Bool, default=lambda: orm.Bool(True))
         spec.input('formation_energy_dict', required=False, valid_type=orm.Dict)
@@ -122,13 +112,12 @@ class FormationEnergyWorkchainBase(WorkChain):
         spec.input("charge_model.fitted.strict_fit",
             valid_type=orm.Bool,
             help="When true, exit the workchain if a fitting parameter is outside the specified tolerance.",
-            default=lambda: orm.Bool(True))       
+            default=lambda: orm.Bool(True))
 #        spec.input('sigma', valid_type=orm.Float, required=False)
-        spec.input("epsilon", valid_type=orm.Float, help="Dielectric constant of the host", required=True)
+        spec.input("epsilon", valid_type=orm.ArrayData, help="3x3 dielectric tensor of the host", required=True)
         spec.input("cutoff", valid_type=orm.Float, required=False)
 
         spec.input("run_dfpt", valid_type=orm.Bool)
->>>>>>> anisotropic_gaussian
 
         # Methodology
         spec.input(
@@ -243,15 +232,11 @@ class FormationEnergyWorkchainBase(WorkChain):
             "defect_site": self.inputs.defect_site,
             "host_structure": self.inputs.host_structure,
             "epsilon": self.ctx.epsilon,
-<<<<<<< HEAD
-            'charge_model': charge_model_dict
-=======
             "cutoff" : self.inputs.cutoff,
             'charge_model': {
                 'model_type': self.inputs.charge_model.model_type
                 }
-        
->>>>>>> anisotropic_gaussian
+
         }
         if self.inputs.charge_model.model_type.value == 'fixed':
             inputs['charge_model']['fixed'] = {'gaussian_params': self.inputs.charge_model.fixed.gaussian_params}

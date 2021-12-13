@@ -7,16 +7,20 @@
 ########################################################################################
 """Tests for the `ModelPotentialWorkchain` class."""
 import pytest
+import numpy as np
+
 from aiida.common import AttributeDict
-from aiida.orm import Float, List, Dict, Int, StructureData
+from aiida.orm import Float, List, ArrayData, Dict, Int, StructureData
 from aiida_defects.formation_energy.corrections.gaussian_countercharge.model_potential.model_potential import ModelPotentialWorkchain
 
 @pytest.fixture
-def generate_inputs_model_potential(generate_structure):
+def generate_inputs_model_potential(generate_structure, generate_array_data):
     """Generate default inputs for `ModelPotentialWorkchain`"""
 
     def _generate_inputs_model_potential():
         """Generate default inputs for `ModelPotentialWorkchain`"""
+
+        mock_array = generate_array_data(3)
 
         inputs = {
             'peak_charge': Float(1.0),
@@ -24,7 +28,7 @@ def generate_inputs_model_potential(generate_structure):
             'scale_factor': Int(2),
             'host_structure': generate_structure(),
             'defect_site': List(list=[0.5,0.5,0.5]),
-            'epsilon': Float(1.0),
+            'epsilon': mock_array,
             'gaussian_params': List(list=[1.,1.,1.,1.,1.,1.,1.,1.,1.])
         }
 
