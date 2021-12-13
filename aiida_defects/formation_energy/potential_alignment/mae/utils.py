@@ -8,6 +8,7 @@
 from __future__ import absolute_import
 
 import numpy as np
+from qe_tools import CONSTANTS
 
 from aiida.engine import calcfunction
 from aiida import orm
@@ -60,7 +61,7 @@ def get_alignment(potential_difference, defect_site, cutoff_radius=lambda: orm.F
     # images is d=1 so look for coordinates at a distance of less than d=0.5.
     # These are the coordinates within the shphere of interaction of the defect.
     # Mask these and only compute the alignment the remaining, most distance points.
-    mask = np.ma.less(distances, cutoff_radius)
+    mask = np.ma.less(distances, cutoff_radius.value)
     v_diff_masked = np.ma.masked_array(v_diff, mask=mask)
     values_remaining = (v_diff_masked.count()/np.prod(v_diff.shape))*100.0
     print('{:.2f}% of values remain'.format(values_remaining))
@@ -70,7 +71,7 @@ def get_alignment(potential_difference, defect_site, cutoff_radius=lambda: orm.F
         raise AllValuesMaskedError
 
     fit_result = fit_potential(v_diff_masked)
-    alignment = fit_result.x
+    alignment = fit_result.x*CONSTANTS.ry_to_ev
 
     return orm.Float(alignment)
 

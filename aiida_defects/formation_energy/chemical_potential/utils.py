@@ -109,7 +109,7 @@ def get_stability_corners(matrix_eqns, N_species, compound, tolerance):
     ordered_stability_corner.set_array('data', Order_point_clockwise(corners_of_stability_region))
     #ordered_stability_corners = Order_point_clockwise(stability_data)
     #self.ctx.stability_corners = ordered_stability_corners
-    
+
     #self.report('The stability corner is : {}'.format(ordered_stability_corners.get_array('data')))
     return ordered_stability_corner
 
@@ -201,7 +201,7 @@ def get_grid(stability_corners, matrix_eqns, N_point=50, tolerance=1E-4):
 	ymax = np.amax(stability_corners[:,1])
 	x = np.linspace(xmin, xmax, N_point)
 	y = np.linspace(ymin, ymax, N_point)
-	
+
 	dim = stability_corners.shape[1]
 	if dim == 2:
 		xx, yy = np.meshgrid(x, y)
@@ -238,7 +238,7 @@ def Order_point_clockwise(points):
         sort_t = np.sort(t)
         t = list(t)
         u = [t.index(element) for element in sort_t]
-    points_order = points[u]
+        points_order = points[u]
 #    ordered_points = ArrayData()
 #    ordered_points.set_array('data', points_order)
 #    return ordered_points

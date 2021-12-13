@@ -34,7 +34,7 @@ class DensityWeightedAlignmentWorkchain(WorkChain):
             help="The fitted model charge density array")
         spec.input('tolerance',
             valid_type=orm.Float,
-            default=orm.Float(1.0e-3),
+            default=lambda: orm.Float(1.0e-3),
             help="The threshold for determining whether a given array element has charge density present")
 
         spec.outline(

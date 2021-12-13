@@ -421,8 +421,8 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
         The dimensions required for the reciprocal space grid
     charge_density:  array
         The calculated model charge density on a 3-dimensional real space grid
-    epsilon: float
-        The value of the dielectric constant
+    epsilon: array
+        3x3 dielectric tensor
 
     Returns
     -------
@@ -433,7 +433,7 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
     dimensions = np.array(dimensions)
     cell_matrix = cell_matrix.get_array('cell_matrix')
     charge_density = charge_density.get_array('model_charge')
-    epsilon = epsilon.value
+    epsilon = epsilon.get_array('epsilon')
 
     # Set up a reciprocal space grid for the potential
     # Prepare coordinates in a 3D array of ijk vectors
@@ -447,17 +447,21 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
 
     # Get G vectors
     G_array = np.dot(ijk_array, (cell_matrix.T))
+    G_array_shape = G_array.shape[0:3] # Drop last axis - we know that each vector is len 3
 
-    # Calculate the square modulus
-    G_sqmod_array = (np.linalg.norm(G_array, axis=3)**2).T
+    # Compute permittivity for all g-vectors
+    dielectric = []
+    for gvec in G_array.reshape(-1,3):
+        dielectric.append(gvec@epsilon@gvec.T)
+    dielectric = np.array(dielectric).reshape(G_array_shape).T
 
     # Get the reciprocal space charge density
     charge_density_g = get_fft(charge_density)
 
     # Compute the model potential
     v_model = np.divide(
-        charge_density_g, G_sqmod_array, where=G_sqmod_array != 0.0)
-    V_model_g = v_model * 4. * np.pi / epsilon
+        charge_density_g, dielectric, where=dielectric != 0.0)
+    V_model_g = v_model * 4. * np.pi
 
     V_model_g[dimensions[0] + 1, dimensions[1] + 1, dimensions[2] + 1] = 0.0
 

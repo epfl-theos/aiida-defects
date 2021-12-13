@@ -36,7 +36,7 @@ class PotentialAlignmentWorkchain(WorkChain):
         super(PotentialAlignmentWorkchain, cls).define(spec)
         spec.input('allow_interpolation',
             valid_type=orm.Bool,
-            default=orm.Bool(False),
+            default=lambda: orm.Bool(False),
             help="Whether to allow arrays of different shapes to be interpolated")
         spec.expose_inputs(DensityWeightedAlignmentWorkchain,
             namespace='density_weighted',
@@ -221,5 +221,9 @@ class PotentialAlignmentWorkchain(WorkChain):
         Collect results
         """
         self.report(
+<<<<<<< HEAD
             "Completed alignment. An alignment of {} eV is required".format(self.ctx.alignment))
+=======
+            "Completed alignment. An alignment of {} eV is required".format(self.ctx.alignment.value))
+>>>>>>> anisotropic_gaussian
         self.out('alignment_required', self.ctx.alignment)

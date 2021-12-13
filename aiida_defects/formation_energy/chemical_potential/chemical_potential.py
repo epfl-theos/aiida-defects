@@ -56,12 +56,12 @@ class ChemicalPotentialWorkchain(WorkChain):
         spec.exit_code(602, "ERROR_INVALID_DEPENDENT_ELEMENT",
             message="In the case of aliovalent substitution, the dopant element has to be different from dependent element."
         )
-    
+
     def setup(self):
         if self.inputs.dependent_element.value in self.inputs.dopant_elements.get_list():
             self.report('In the case of aliovalent substitution, the dopant element has to be different from dependent element. Please choose a different dependent element.')
             return self.exit_codes.ERROR_INVALID_DEPENDENT_ELEMENT
-        
+
         composition = Composition(self.inputs.compound.value)
         element_list = [atom for atom in composition]
 
@@ -70,17 +70,17 @@ class ChemicalPotentialWorkchain(WorkChain):
             N_species = len(composition) + len(self.inputs.dopant_elements.get_list())
         else:
             N_species = len(composition)
-        
+
         self.ctx.element_list = element_list
         self.ctx.N_species = Int(N_species)
         formation_energy_dict = self.inputs.formation_energy_dict.get_dict()
-        
+
         # check if the compound is stable or not. If not shift its energy down to put it on the convex hull and issue a warning.
         E_hull = get_e_above_hull(self.inputs.compound.value, element_list, formation_energy_dict)
         if E_hull > 0:
             self.report('WARNING! The compound {} is predicted to be unstable. For the purpose of determining the stability region, we shift its formation energy down so that it is on the convex hull. Use with care!'.format(self.inputs.compound.value))
-            formation_energy_dict[self.inputs.compound.value] -= composition.num_atoms*(E_hull+0.005) # the factor 0.005 is added for numerical reason
-        
+            formation_energy_dict[self.inputs.compound.value] -= composition.num_atoms*(E_hull+0.005) # the factor 0.005 is added for numerical precision to make sure that the compound is now on the convex hull
+
         self.ctx.formation_energy_dict = Dict(dict=formation_energy_dict)
 
     def generate_matrix_of_constraints(self):
@@ -112,12 +112,12 @@ class ChemicalPotentialWorkchain(WorkChain):
         Solve the system of (linear) constraints to get the coordinates of the corners of polyhedra that delineate the stability region
         '''
         self.ctx.stability_corners = get_stability_corners(
-                                        self.ctx.matrix_eqns, 
-                                        self.ctx.N_species, 
-                                        self.inputs.compound, 
+                                        self.ctx.matrix_eqns,
+                                        self.ctx.N_species,
+                                        self.inputs.compound,
                                         self.inputs.tolerance
                                         )
-        #self.report('The stability corner is : {}'.format(ordered_stability_corners.get_array('data')))
+        #self.report('The stability corner is : {}'.format(self.ctx.stability_corners.get_array('data')))
         self.out("stability_corners", self.ctx.stability_corners)
 
     def get_chemical_potential(self):
@@ -125,18 +125,18 @@ class ChemicalPotentialWorkchain(WorkChain):
         Compute the centroid of the stability region
         '''
         centroid = get_center_of_stability(
-                        self.inputs.compound, 
-                        self.inputs.dependent_element, 
-                        self.ctx.stability_corners, 
-                        self.ctx.N_species, 
+                        self.inputs.compound,
+                        self.inputs.dependent_element,
+                        self.ctx.stability_corners,
+                        self.ctx.N_species,
                         self.ctx.matrix_eqns
                         )
         self.report('Centroid of the stability region is {}'.format(centroid.get_array('data')))
-        
-        # Recover the absolute chemical potential by adding the energy of the reference elements to centroid 
+
+        # Recover the absolute chemical potential by adding the energy of the reference elements to centroid
         self.ctx.chemical_potential = get_chemical_potential(
-                                            centroid, 
-                                            self.inputs.ref_energy, 
+                                            centroid,
+                                            self.inputs.ref_energy,
                                             self.ctx.column_order
                                             )
         self.out('chemical_potential', self.ctx.chemical_potential)

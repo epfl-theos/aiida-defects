@@ -13,8 +13,9 @@ from aiida import orm
 from aiida_defects.formation_energy.potential_alignment.potential_alignment import PotentialAlignmentWorkchain
 from .model_potential.model_potential import ModelPotentialWorkchain
 from aiida_defects.formation_energy.potential_alignment.utils import get_potential_difference
-from .utils import get_total_correction, get_total_alignment, get_charge_model_fit, fit_energies, calc_correction
-
+from .utils import get_total_correction, get_alignment, get_total_alignment, get_charge_model_fit, fit_energies, calc_correction, is_gaussian_isotrope
+from qe_tools import CONSTANTS
+import numpy as np 
 
 class GaussianCounterChargeWorkchain(WorkChain):
     """
@@ -38,8 +39,8 @@ class GaussianCounterChargeWorkchain(WorkChain):
             valid_type=orm.List,
             help="Defect site position in crystal coordinates.")
         spec.input("epsilon",
-            valid_type=orm.Float,
-            help="Dielectric constant for the host material.")
+            valid_type=orm.ArrayData,
+            help="Dielectric tensor (3x3) for the host material.")
         spec.input("model_iterations_required",
             valid_type=orm.Int,
             default=lambda: orm.Int(3),
@@ -100,16 +101,19 @@ class GaussianCounterChargeWorkchain(WorkChain):
                 cls.compute_model_potential,
             ),
             cls.check_model_potential_workchains,
+            cls.get_isolated_energy,
             cls.compute_dft_difference_potential,
             cls.submit_alignment_workchains,
             cls.check_alignment_workchains,
-            cls.get_isolated_energy,
+            #cls.get_isolated_energy,
             cls.get_model_corrections,
             cls.compute_correction,
         )
-        spec.output('v_dft_difference', valid_type=orm.ArrayData)
+        spec.output('gaussian_parameters', valid_type=orm.Dict, required=False)
+#        spec.output('v_dft_difference', valid_type=orm.ArrayData)
         spec.output('alignment_q0_to_host', valid_type=orm.Float)
-        spec.output('alignment_dft_to_model', valid_type=orm.Float)
+        spec.output('alignment_diff_q_q0_to_model', valid_type=orm.Float)
+        spec.output('alignment_diff_q_host_to_model', valid_type=orm.Float)
         spec.output('total_alignment', valid_type=orm.Float, required=True)
         spec.output('total_correction', valid_type=orm.Float)
         spec.output('electrostatic_correction', valid_type=orm.Float)
@@ -150,7 +154,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         ## Verification
         # Minimum number of iterations required.
         # TODO: Replace this with an input ports validator
-        if self.inputs.model_iterations_required < 3:
+        if self.inputs.charge_model.model_type == 'fitted' and self.inputs.model_iterations_required < 3:
            self.report('The requested number of iterations, {}, is too low. At least 3 are required to achieve an adequate data fit'.format(self.inputs.model_iterations_required.value))
            return self.exit_codes.ERROR_BAD_INPUT_ITERATIONS_REQUIRED
 
@@ -168,6 +172,12 @@ class GaussianCounterChargeWorkchain(WorkChain):
             elif 'fixed' in self.inputs.charge_model: #Wanted fitted, but gave fixed params
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
         elif self.ctx.charge_model == 'fixed':
+            # check if the gaussian parameters correspond to an isotropic gaussian
+            if is_gaussian_isotrope(self.inputs.charge_model.fixed.gaussian_params.get_list()[3:]):
+                self.report('DEBUG: the given gaussian parameters correspond to isotropic gaussian')
+                self.inputs.model_iterations_required = orm.Int(1)
+                self.ctx.is_gaussian_isotrope = True
+                self.ctx.sigma = np.mean(self.inputs.charge_model.fixed.gaussian_params.get_list()[3:6])
             if 'fixed' not in self.inputs.charge_model: #Wanted fixed, but no params given
                 return self.exit_codes.ERROR_BAD_INPUT_CHARGE_MODEL_PARAMETERS
             elif 'fitted' in self.inputs.charge_model: #Wanted fixed, but gave fitted params
@@ -224,13 +234,22 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         self.ctx.fitted_params = orm.List(list=fit['fit'])
         self.ctx.peak_charge = orm.Float(fit['peak_charge'])
+        self.out('gaussian_parameters', fit)
+        self.report('DEBUG: the gaussian parameters obtained from fitting are: {}'.format(fit['fit']))
 
         for parameter in fit['error']:
-            if parameter > self.inputs.charge_fit_tolerance:
+            if parameter > self.inputs.charge_model.fitted.tolerance:
                 self.logger.warning("Charge fitting parameter worse than allowed tolerance")
-                if self.inputs.strict_fit:
+                if self.inputs.charge_model.fitted.strict_fit:
                     return self.exit_codes.ERROR_BAD_CHARGE_FIT
 
+        if is_gaussian_isotrope(self.ctx.fitted_params.get_list()[3:]):
+            self.report('The fitted gaussian is isotropic. The isolated model energy will be computed analytically')
+            self.inputs.model_iterations_required = orm.Int(1)
+            self.ctx.is_gaussian_isotrope = True
+            self.ctx.sigma = np.mean(self.ctx.fitted_params.get_list()[3:6])
+        else:
+            self.ctx.is_gaussian_isotrope = False
 
     def should_run_model(self):
         """
@@ -284,7 +303,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             if not model_workchain.is_finished_ok:
                 self.report(
                     'Model potential workchain for scale factor {} failed with status {}'
-                    .format(model_workchain.scale_factor,
+                    .format(scale_factor,
                             model_workchain.exit_status))
                 return self.exit_codes.ERROR_SUB_PROCESS_FAILED_MODEL_POTENTIAL
             else:
@@ -301,7 +320,11 @@ class GaussianCounterChargeWorkchain(WorkChain):
         """
         self.ctx.v_defect_q_q0 = get_potential_difference(
             self.inputs.v_defect_q, self.inputs.v_defect_q0)
-        self.out('v_dft_difference', self.ctx.v_defect_q_q0)
+        #self.out('v_dft_difference', self.ctx.v_defect_q_q0)
+
+        self.ctx.v_defect_q_host = get_potential_difference(
+            self.inputs.v_defect_q, self.inputs.v_host)
+        #self.out('v_dft_difference', self.ctx.v_defect_q_q0)
 
 
     def submit_alignment_workchains(self):
@@ -324,13 +347,14 @@ class GaussianCounterChargeWorkchain(WorkChain):
         label = 'workchain_alignment_q0_to_host'
         self.to_context(**{label: workchain_future})
 
-        # Convert units from model potential workchain, and also change sign
+        # Convert units from from eV in model potential to Ryd unit as in DFT potential, and also change sign
+        # The potential alignment has to be converted back to eV. It is done in the mae/utils.py. Not pretty, has to be cleaned
         # TODO: Check if this breaks provenance graph
         v_model = orm.ArrayData()
         v_model.set_array('data',
-            self.ctx.v_model.get_array(self.ctx.v_model.get_arraynames()[0])*-2.0) # Ha to Ry - This is dirty - need to harmonise units
+            self.ctx.v_model.get_array(self.ctx.v_model.get_arraynames()[0])/(-1.0*CONSTANTS.ry_to_ev)) # eV to Ry unit of potential - This is dirty - need to harmonise units
 
-        # Compute the alignment between the defect DFT difference potential, and the model
+        # Compute the alignment between the difference of DFT potentials v_q and v_q0, and the model
         inputs = {
 
             "allow_interpolation": orm.Bool(True),
@@ -341,9 +365,22 @@ class GaussianCounterChargeWorkchain(WorkChain):
             },
         }
         workchain_future = self.submit(PotentialAlignmentWorkchain, **inputs)
-        label = 'workchain_alignment_dft_to_model'
+        label = 'workchain_alignment_q-q0_to_model'
         self.to_context(**{label: workchain_future})
 
+        # Compute the alignment between the difference of DFT potentials v_q and v_host, and the model
+        inputs = {
+
+            "allow_interpolation": orm.Bool(True),
+            "mae":{
+                "first_potential": self.ctx.v_defect_q_host,
+                "second_potential": v_model,
+                "defect_site": self.inputs.defect_site
+            },
+        }
+        workchain_future = self.submit(PotentialAlignmentWorkchain, **inputs)
+        label = 'workchain_alignment_q-host_to_model'
+        self.to_context(**{label: workchain_future})
 
     def check_alignment_workchains(self):
         """
@@ -361,35 +398,56 @@ class GaussianCounterChargeWorkchain(WorkChain):
         else:
             self.ctx.alignment_q0_to_host = alignment_wc.outputs.alignment_required
 
-        # DFT diff to model
-        alignment_wc = self.ctx['workchain_alignment_dft_to_model']
+        # DFT q-q0 to model
+        alignment_wc = self.ctx['workchain_alignment_q-q0_to_model']
         if not alignment_wc.is_finished_ok:
             self.report(
-                'Potential alignment workchain (DFT diff to model) failed with status {}'
+                'Potential alignment workchain (DFT q-q0 to model) failed with status {}'
                 .format(alignment_wc.exit_status))
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_ALIGNMENT
         else:
-            self.ctx.alignment_dft_to_model = alignment_wc.outputs.alignment_required
+            self.ctx['alignment_q-q0_to_model'] = alignment_wc.outputs.alignment_required
 
+        # DFT q-host to model
+        alignment_wc = self.ctx['workchain_alignment_q-host_to_model']
+        if not alignment_wc.is_finished_ok:
+            self.report(
+                'Potential alignment workchain (DFT q-host to model) failed with status {}'
+                .format(alignment_wc.exit_status))
+            return self.exit_codes.ERROR_SUB_PROCESS_FAILED_ALIGNMENT
+        else:
+            self.ctx['alignment_q-host_to_model'] = alignment_wc.outputs.alignment_required
 
     def get_isolated_energy(self):
         """
         Fit the calculated model energies and obtain an estimate for the isolated model energy
         """
 
-        # Get the linear dimensions of the structures
-        linear_dimensions = {}
+        if not self.ctx.is_gaussian_isotrope:
+            # Get the linear dimensions of the structures
+            linear_dimensions = {}
 
-        for scale, structure in self.ctx.model_structures.items():
-            volume = structure.get_cell_volume()
-            linear_dimensions[scale] = 1 / (volume**(1 / 3.))
+            for scale, structure in self.ctx.model_structures.items():
+                volume = structure.get_cell_volume()
+                linear_dimensions[scale] = 1 / (volume**(1 / 3.))
 
-        self.report(
-            "Fitting the model energies to obtain the model energy for the isolated case"
-        )
-        self.ctx.isolated_energy = fit_energies(
-            orm.Dict(dict=linear_dimensions),
-            orm.Dict(dict=self.ctx.model_energies))
+            self.report(
+                "Fitting the model energies to obtain the model energy for the isolated case"
+            )
+            self.ctx.isolated_energy = fit_energies(
+                orm.Dict(dict=linear_dimensions),
+                orm.Dict(dict=self.ctx.model_energies))
+        else:
+            sigma = self.ctx.sigma
+            defect_charge = self.inputs.defect_charge.value
+            # Epsilon is now expected to be a tensor, and so to get a scalar here we diagonalise.
+            epsilon_tensor = self.inputs.epsilon.get_array('epsilon')
+            epsilon = np.mean(np.diag(epsilon_tensor)) # Approximation to the tensor
+            self.report(
+                    "Computing the energy of the isolated gaussian analytically"
+            )
+            self.ctx.isolated_energy = orm.Float(defect_charge**2/(2*epsilon*sigma*np.sqrt(np.pi))*CONSTANTS.hartree_to_ev)
+
         self.report("The isolated model energy is {} eV".format(
             self.ctx.isolated_energy.value))
 
@@ -412,9 +470,11 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         electrostatic_correction = self.ctx.model_correction_energies['1']
 
-        total_alignment = get_total_alignment(self.ctx.alignment_dft_to_model,
-                                              self.ctx.alignment_q0_to_host,
-                                              self.inputs.defect_charge)
+        # total_alignment = get_total_alignment(self.ctx['alignment_q-q0_to_model'],
+        #                                       self.ctx['alignment_q0_to_host'],
+        #                                       self.inputs.defect_charge)
+        total_alignment = get_alignment(self.ctx['alignment_q-host_to_model'],
+        								self.inputs.defect_charge)
 
         total_correction = get_total_correction(electrostatic_correction,
                                                 total_alignment)
@@ -434,6 +494,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
 
         # Store additional outputs
         self.out('alignment_q0_to_host', self.ctx.alignment_q0_to_host)
-        self.out('alignment_dft_to_model', self.ctx.alignment_dft_to_model)
+        self.out('alignment_diff_q_q0_to_model', self.ctx['alignment_q-q0_to_model'])
+        self.out('alignment_diff_q_host_to_model', self.ctx['alignment_q-host_to_model'])
 
         self.report('Gaussian Countercharge workchain completed successfully')

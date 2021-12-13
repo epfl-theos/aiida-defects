@@ -15,6 +15,13 @@ from aiida.engine import calcfunction
 Utility functions for the gaussian countercharge workchain
 """
 
+def is_gaussian_isotrope(gaussian_params):
+    eps = 0.01
+    average_sigma = np.mean(gaussian_params[:3])
+    #check if the off-diagonal elements sigma_xy, sigma_xz and simga_yz are all close to zero
+    test_1 = all(np.array(gaussian_params[3:])/average_sigma < eps)
+    test_2 = all(abs((np.array(gaussian_params[:3])/average_sigma) - 1.0) < eps)
+    return test_1 and test_2
 
 @calcfunction
 def create_model_structure(base_structure, scale_factor):
@@ -52,10 +59,37 @@ def get_total_alignment(alignment_dft_model, alignment_q0_host, charge):
 
     """
 
-    total_alignment = -1.0*(charge * alignment_dft_model) + (
+    # total_alignment = -1.0*(charge * alignment_dft_model) + (
+    #     charge * alignment_q0_host)
+
+    # The minus sign is incorrect. It is remove in the corrected formula below:
+    total_alignment = charge * alignment_dft_model + (
         charge * alignment_q0_host)
 
     return total_alignment
+
+@calcfunction
+def get_alignment(alignment_q_host_to_model, charge):
+    """
+    Calculate the total potential alignment
+
+    Parameters
+    ----------
+    alignment_q_host_to_model: orm.Float
+        The correction energy derived from the alignment of the DFT difference
+        potential of the charge defect and the host to the model potential
+    charge: orm.Float
+        The charge state of the defect
+
+    Returns
+    -------
+    total_alignment
+        The calculated total potential alignment
+    """
+
+    alignment = charge.value * alignment_q_host_to_model.value
+
+    return orm.Float(alignment)
 
 
 @calcfunction
