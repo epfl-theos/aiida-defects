@@ -57,9 +57,9 @@ class FormationEnergyWorkchainBase(WorkChain):
              "defect_charge",
              valid_type=orm.Float,
              help="Defect charge state")
-        spec.input(
-            "defect_species",
-            valid_type=orm.Str)
+#        spec.input(
+#            "defect_species",
+#            valid_type=orm.Str)
         spec.input(
             "defect_site",
             valid_type=orm.List,
