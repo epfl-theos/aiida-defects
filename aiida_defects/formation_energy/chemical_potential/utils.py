@@ -11,7 +11,7 @@ from aiida.engine import calcfunction
 import numpy as np
 from pymatgen.core.composition import Composition
 from aiida.orm import ArrayData, Float, Dict
-from pymatgen import Element
+from pymatgen.core.periodic_table import Element
 from itertools import combinations
 from pymatgen.analysis.phase_diagram import *
 from pymatgen.entries.computed_entries import ComputedEntry

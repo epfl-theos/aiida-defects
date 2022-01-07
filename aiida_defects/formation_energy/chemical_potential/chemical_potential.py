@@ -12,7 +12,7 @@ from aiida.orm import Float, Int, Str, List, Bool, Dict, ArrayData
 import sys
 import numpy as np
 from pymatgen.core.composition import Composition
-from pymatgen import MPRester, Composition, Element
+from pymatgen.core.periodic_table import Element
 from itertools import combinations
 
 from .utils import *
