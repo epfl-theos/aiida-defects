@@ -87,8 +87,24 @@ def get_full_matrix_of_constraints(formation_energy_dict, compound, dependent_el
 
     return pandas_df_to_Dict(eqns, index=True)
 
+# @calcfunction
+# def get_master_equation(raw_constraint_coefficients, compound):
+#     '''
+#     The 'master' equation is simply the equality corresponding to the formation energy of the
+#     compound under consideration. For ex. if we are studying the defect in Li3PO4, the master 
+#     equation is simply: 3*mu_Li + mu_P + 4*mu_O = Ef where Ef is the formation energy per fu
+#     of Li3PO4. This equation is needed to replace the dependent chemical potential from the set
+#     of other linear constraints and to recover the chemical potential of the dependent element 
+#     from the chemical potentials of independent elements
+#     '''
+#     all_coefficients = raw_constraint_coefficients.get_dict()
+#     eqns = Dict_to_pandas_df(all_coefficients)
+#     master_eqn = eqns.loc[[compound.value],:]
+    
+#     return pandas_df_to_Dict(master_eqn, index=True) 
+
 @calcfunction
-def get_master_equation(raw_constraint_coefficients, compound):
+def get_master_equation(formation_energy_dict, compound, dependent_element, dopant):
     '''
     The 'master' equation is simply the equality corresponding to the formation energy of the
     compound under consideration. For ex. if we are studying the defect in Li3PO4, the master 
@@ -97,11 +113,25 @@ def get_master_equation(raw_constraint_coefficients, compound):
     of other linear constraints and to recover the chemical potential of the dependent element 
     from the chemical potentials of independent elements
     '''
-    all_coefficients = raw_constraint_coefficients.get_dict()
-    eqns = Dict_to_pandas_df(all_coefficients)
-    master_eqn = eqns.loc[[compound.value],:]
-    
+    Ef_dict = formation_energy_dict.get_dict()
+    compound = compound.value
+    composition = Composition(compound)
+    dependent_element = dependent_element.value
+    dopant = dopant.get_list()
+
+    element_order = [atom.symbol for atom in composition if atom.symbol != dependent_element]
+    if dopant == []:
+        element_order.extend([dependent_element, 'Ef'])
+    else:
+        element_order.extend(dopant+[dependent_element, 'Ef'])
+    master_eqn = pd.DataFrame(np.zeros((1, len(element_order))), index=[compound], columns=element_order)
+
+    for atom in composition:
+        master_eqn.loc[compound, atom.symbol] = composition[atom]
+    master_eqn.loc[compound, 'Ef'] = Ef_dict[compound]
+
     return pandas_df_to_Dict(master_eqn, index=True) 
+
 
 @calcfunction
 def get_reduced_matrix_of_constraints(full_matrix_of_constraints, compound, dependent_element):
@@ -109,8 +139,9 @@ def get_reduced_matrix_of_constraints(full_matrix_of_constraints, compound, depe
     The reduced matrix of constraints is obtained from the full matrix of constraint by eliminating
     the row corresponding to the master equation and the column associated with the dependent element
     after substituting the chemical potential of the dependent element by that of the independent 
-    elements using the master equation. Therefore, if the shape of the full matrix of constraint is 
-    NxN, then the shape of the reduced matrix of constraints is (N-1)x(N-1)
+    elements using the master equation (which at this stage is the first row of the full matrix of 
+    constraints). Therefore, if the shape of the full matrix of constraint is NxM, then the shape 
+    of the reduced matrix of constraints is (N-1)x(M-1)
     '''
     compound = compound.value
     dependent_element = dependent_element.value
@@ -152,7 +183,7 @@ def get_stability_vertices(master_eqn, matrix_eqns, compound, dependent_element,
             point = np.linalg.solve(set_of_constraints[item,:-1], set_of_constraints[item,-1])
             intersecting_points.append(point)
         except np.linalg.LinAlgError:
-            ### Singular matrix: lines are parallels therefore don't have any intersection
+            ### Singular matrix: lines or (hyper)planes are parallels therefore don't have any intersection
             pass
 
     ### Determine the points that form the vertices of stability region. These are intersecting point that verify all the constraints.
@@ -164,9 +195,9 @@ def get_stability_vertices(master_eqn, matrix_eqns, compound, dependent_element,
     ### In some cases, we may have several solutions corresponding to the same points. Hence, the remove_duplicate method
     corners_of_stability_region = remove_duplicate(corners_of_stability_region)
 
-    if corners_of_stability_region.size == 0:
-        self.report('The stability region cannot be determined. The compound {} is probably unstable'.format(compound))
-        return self.exit_codes.ERROR_CHEMICAL_POTENTIAL_FAILED
+    # if corners_of_stability_region.size != 0:
+    #     self.report('The stability region cannot be determined. The compound {} is probably unstable'.format(compound))
+    #     return self.exit_codes.ERROR_CHEMICAL_POTENTIAL_FAILED
 
     stability_corners = pd.DataFrame(corners_of_stability_region, columns=matrix_eqns['column'][:-1])
     master_eqn = Dict_to_pandas_df(master_eqn)
@@ -213,7 +244,7 @@ def get_centroid_of_stability_region(stability_corners, master_eqn, matrix_eqns,
     master_eqn = Dict_to_pandas_df(master_eqn)
     # Add the corresponding chemical potential of the dependent element
     dependent_chempot = get_dependent_chempot(master_eqn, ctr_stability.to_dict(orient='list'), compound, dependent_element)
-    ctr_stability = np.append(ctr_stability, np.reshape(dependent_chempot, (-1,1)), axis =1)
+    ctr_stability = np.append(ctr_stability, np.reshape(dependent_chempot, (-1,1)), axis=1)
     ctr_stability = Dict(dict={'column': matrix_eqns['column'][:-1]+[dependent_element], 'data': ctr_stability})
 
     return ctr_stability
@@ -231,7 +262,7 @@ def get_e_above_hull(compound, element_list, formation_energy_dict):
             idx = i
         mp_entries.append(ComputedEntry(Composition(material), Ef))
     for ref in element_list:
-        mp_entries.append(ComputedEntry(Composition(ref.symbol), 0.0))
+        mp_entries.append(ComputedEntry(Composition(ref), 0.0))
     #mp_entries.append(ComputedEntry(composition, E_formation))
 
     pd = PhaseDiagram(mp_entries)
@@ -311,22 +342,47 @@ def get_points_in_stability_region(stability_corners, matrix_eqns, N_point, tole
 def get_centroid(stability_region):
 	return np.mean(stability_region, axis=0)
 
+@calcfunction
+def substitute_chemical_potential(matrix_eqns, fixed_chempot):
+    '''
+    substitute chemical potentials in the matrix of constraints by some fixed values.
+    Useful for ex. for determining the 'slice' of stability region.
+    '''
+    matrix_eqns = Dict_to_pandas_df(matrix_eqns.get_dict())
+    fixed_chempot = fixed_chempot.get_dict()
+    for spc in fixed_chempot.keys():
+        matrix_eqns.loc[:, 'Ef'] -= matrix_eqns.loc[:, spc]*fixed_chempot[spc]
+        matrix_eqns = matrix_eqns.drop(columns=spc)
+
+    for spc in fixed_chempot.keys():
+        if spc in matrix_eqns.index:
+            # print('Found!')
+            matrix_eqns = matrix_eqns.drop(spc)
+    # print(matrix_eqns)
+    return pandas_df_to_Dict(matrix_eqns, index=True)
+
 def Order_point_clockwise(points):
-#    points = points.get_array('data')
-    if len(points[0]) == 1:
-        points_order = points
-    else:
+    '''
+    The vertices of the stability region has to be ordered clockwise or counter-clockwise for plotting.
+    Work only in 2D stability region
+
+    points: 2d numpy array
+
+    '''
+    if points.shape[1] == 3:
+        # Excluding the column corresponding to the dependent element (last column)
+        points = points[:,:-1]
         center = np.mean(points, axis=0)
         # compute angle
         t = np.arctan2(points[:,0]-center[0], points[:,1]-center[1])
         sort_t = np.sort(t)
         t = list(t)
         u = [t.index(element) for element in sort_t]
-        points_order = points[u]
-#    ordered_points = ArrayData()
-#    ordered_points.set_array('data', points_order)
-#    return ordered_points
-    return points_order
+        ordered_points = points[u]
+        return ordered_points
+    else:
+        raise ValueError('The argument has to be a Nx3 numpy array')
+
 
 @calcfunction
 def get_absolute_chemical_potential(relative_chemical_potential, ref_energy):
@@ -339,3 +395,18 @@ def get_absolute_chemical_potential(relative_chemical_potential, ref_energy):
         absolute_chemical_potential[element] = ref_energy[element] + np.array(relative_chempot[element])
 
     return Dict(dict=absolute_chemical_potential)
+
+@calcfunction
+def get_StabilityData(matrix_eqns, stability_vertices, compound, dependent_element):
+    
+    # from aiida_defects.data.data import StabilityData
+    from aiida.plugins import DataFactory
+
+    M = matrix_eqns.get_dict()
+    vertices = stability_vertices.get_dict()
+
+    StabilityData = DataFactory('array.stability')
+    stability_region = StabilityData()
+    stability_region.set_data(np.array(M['data']), M['index'], M['column'], np.array(vertices['data']), compound.value, dependent_element.value)
+
+    return stability_region
