@@ -14,8 +14,12 @@
         "Framework :: AiiDA"
     ],
     "entry_points": {
+	"aiida.data": [
+	    "array.stability = aiida_defects.data.data:StabilityData"
+	],
         "aiida.workflows": [
             "defects.formation_energy.qe = aiida_defects.formation_energy.formation_energy_qe:FormationEnergyWorkchainQE",
+	    "defects.formation_energy.chemical_potential = aiida_defects.formation_energy.chemical_potential.chemical_potential:ChemicalPotentialWorkchain",
             "defects.formation_energy.siesta = aiida_defects.formation_energy.formation_energy_siesta:FormationEnergyWorkchainSiesta",
             "defects.formation_energy.corrections.gaussian_countercharge = aiida_defects.formation_energy.corrections.gaussian_countercharge.gaussian_countercharge:GaussianCounterChargeWorkchain",
             "defects.formation_energy.corrections.gaussian_countercharge.model_potential = aiida_defects.formation_energy.corrections.gaussian_countercharge.model_potential.model_potential:ModelPotentialWorkchain",
