@@ -29,6 +29,13 @@ class AllValuesMaskedError(ValueError):
     pass
 
 @calcfunction
+def convert_Hat_to_Ryd(potential):
+    v_model = orm.ArrayData()
+    v_model.set_array('data', potential.get_array(potential.get_arraynames()[0])*-2.0)
+
+    return v_model
+
+@calcfunction
 def get_alignment(potential_difference, defect_site, cutoff_radius=lambda: orm.Float(0.5)):
     """
     Compute the mean-absolute error potential alignment
@@ -51,7 +58,7 @@ def get_alignment(potential_difference, defect_site, cutoff_radius=lambda: orm.F
     # Generate a crystal grid of the same dimension as the data
     ijk_array = get_grid(v_diff.shape, endpoint=False)
     # Compute the distance from the defect site to every other.
-    distance_vectors = np.array(defect_site).reshape(3,1) - ijk_array
+    distance_vectors = np.array(defect_site.get_list()).reshape(3,1) - ijk_array
     # Apply minimum image
     min_image_vectors = (distance_vectors - np.rint(distance_vectors))
     # Compute distances and reshape to match input data
@@ -71,7 +78,7 @@ def get_alignment(potential_difference, defect_site, cutoff_radius=lambda: orm.F
         raise AllValuesMaskedError
 
     fit_result = fit_potential(v_diff_masked)
-    alignment = fit_result.x*CONSTANTS.ry_to_ev
+    alignment = -1.*fit_result.x*CONSTANTS.ry_to_ev
 
     return orm.Float(alignment)
 

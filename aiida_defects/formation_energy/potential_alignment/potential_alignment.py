@@ -101,19 +101,24 @@ class PotentialAlignmentWorkchain(WorkChain):
             namespace=self.ctx.alignment_scheme))
         self.ctx.inputs = inputs
 
+
         # Array should have the same shape - if not they should be interpolated to have the same shape
         # Collect the arrays
+        # arrays = {
+        #     'first_potential': inputs.first_potential,
+        #     'second_potential': inputs.second_potential
+        # }
         arrays = {
-            'first_potential': inputs.first_potential,
-            'second_potential': inputs.second_potential
+            'first_potential': self.inputs[self.ctx.alignment_scheme]['first_potential'],
+            'second_potential': self.inputs[self.ctx.alignment_scheme]['second_potential']
         }
         if 'charge_density' in inputs: # density-weighted case
             arrays['charge_density'] = inputs.charge_density
 
-        # Check if ArrayData objects have more than one array packed in them
-        for array in arrays.values():
-            if len(array.get_arraynames()) != 1:
-                return self.exit_codes.ERROR_INPUT_EXTRA_ARRAYS
+        # # Check if ArrayData objects have more than one array packed in them
+        # for array in arrays.values():
+        #     if len(array.get_arraynames()) != 1:
+        #         return self.exit_codes.ERROR_INPUT_EXTRA_ARRAYS
 
         # Unpack and obtain the shapes
         array_shapes = {}
@@ -175,13 +180,23 @@ class PotentialAlignmentWorkchain(WorkChain):
 
         self.report('Doing interpolation')
         interpolated_arrays = {}
-        for array_name, array in self.ctx.arrays.items():
-            interpolated_arrays[array_name] = get_interpolation(
-                input_array=array,
+        # for array_name, array in self.ctx.arrays.items():
+        #     interpolated_arrays[array_name] = get_interpolation(
+        #         input_array=array,
+        #         target_shape=target_shape)
+        # # Replace input arrays with interpolated versions
+        # for array_name, array in interpolated_arrays.items():
+        #     self.ctx.inputs[array_name] = array
+
+        interpolated_arrays['first_potential'] = get_interpolation(
+                input_array=self.inputs[self.ctx.alignment_scheme]['first_potential'],
+                target_shape=target_shape)
+        interpolated_arrays['second_potential'] = get_interpolation(
+                input_array=self.inputs[self.ctx.alignment_scheme]['second_potential'],
                 target_shape=target_shape)
         # Replace input arrays with interpolated versions
         for array_name, array in interpolated_arrays.items():
-            self.ctx.inputs[array_name] = array
+            self.ctx.inputs[array_name] = array        
 
         return
 

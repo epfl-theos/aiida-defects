@@ -15,12 +15,26 @@ from aiida.engine import calcfunction
 Utility functions for the gaussian countercharge workchain
 """
 
-def is_gaussian_isotrope(gaussian_params):
-    eps = 0.01
-    average_sigma = np.mean(gaussian_params[:3])
-    #check if the off-diagonal elements sigma_xy, sigma_xz and simga_yz are all close to zero
-    test_1 = all(np.array(gaussian_params[3:])/average_sigma < eps)
-    test_2 = all(abs((np.array(gaussian_params[:3])/average_sigma) - 1.0) < eps)
+# def is_gaussian_isotrope(gaussian_params):
+#     eps = 0.01
+#     average_sigma = np.mean(gaussian_params[:3])
+#     #check if the off-diagonal elements sigma_xy, sigma_xz and simga_yz are all close to zero
+#     test_1 = all(np.array(gaussian_params[3:])/average_sigma < eps)
+#     test_2 = all(abs((np.array(gaussian_params[:3])/average_sigma) - 1.0) < eps)
+#     return test_1 and test_2
+
+def is_isotrope(matrix, tol=0.01):
+    '''
+    check if a 3x3 matrix is isotropic i,e. it can be written as a product of a number and an identity matrix
+    '''
+
+    # check if all diagonal elements are the same
+    diagonal = np.diagonal(matrix)
+    test_1 = np.all(np.abs([diagonal[0]-diagonal[1], diagonal[1]-diagonal[2], diagonal[0]-diagonal[2]]) < tol)
+
+    #check if all the off-diagonal are zero (within the tolerance, tol)
+    test_2 = np.all(np.abs(matrix - np.diag(np.diagonal(matrix))) < tol)
+
     return test_1 and test_2
 
 @calcfunction
@@ -35,65 +49,65 @@ def create_model_structure(base_structure, scale_factor):
     return model_structure
 
 
+# @calcfunction
+# def get_total_alignment(alignment_dft_model, alignment_q0_host, charge):
+#     """
+#     Calculate the total potential alignment
+
+#     Parameters
+#     ----------
+#     alignment_dft_model: orm.Float
+#         The correction energy derived from the alignment of the DFT difference
+#         potential and the model potential
+#     alignment_q0_host: orm.Float
+#         The correction energy derived from the alignment of the defect
+#         potential in the q=0 charge state and the potential of the pristine
+#         host structure
+#     charge: orm.Float
+#         The charge state of the defect
+
+#     Returns
+#     -------
+#     total_alignment
+#         The calculated total potential alignment
+
+#     """
+
+#     # total_alignment = -1.0*(charge * alignment_dft_model) + (
+#     #     charge * alignment_q0_host)
+
+#     # The minus sign is incorrect. It is remove in the corrected formula below:
+#     total_alignment = charge * alignment_dft_model + (
+#         charge * alignment_q0_host)
+
+#     return total_alignment
+
+# @calcfunction
+# def get_alignment(alignment_q_host_to_model, charge):
+#     """
+#     Calculate the total potential alignment
+
+#     Parameters
+#     ----------
+#     alignment_q_host_to_model: orm.Float
+#         The correction energy derived from the alignment of the DFT difference
+#         potential of the charge defect and the host to the model potential
+#     charge: orm.Float
+#         The charge state of the defect
+
+#     Returns
+#     -------
+#     total_alignment
+#         The calculated total potential alignment
+#     """
+
+#     alignment = charge.value * alignment_q_host_to_model.value
+
+#     return orm.Float(alignment)
+
+
 @calcfunction
-def get_total_alignment(alignment_dft_model, alignment_q0_host, charge):
-    """
-    Calculate the total potential alignment
-
-    Parameters
-    ----------
-    alignment_dft_model: orm.Float
-        The correction energy derived from the alignment of the DFT difference
-        potential and the model potential
-    alignment_q0_host: orm.Float
-        The correction energy derived from the alignment of the defect
-        potential in the q=0 charge state and the potential of the pristine
-        host structure
-    charge: orm.Float
-        The charge state of the defect
-
-    Returns
-    -------
-    total_alignment
-        The calculated total potential alignment
-
-    """
-
-    # total_alignment = -1.0*(charge * alignment_dft_model) + (
-    #     charge * alignment_q0_host)
-
-    # The minus sign is incorrect. It is remove in the corrected formula below:
-    total_alignment = charge * alignment_dft_model + (
-        charge * alignment_q0_host)
-
-    return total_alignment
-
-@calcfunction
-def get_alignment(alignment_q_host_to_model, charge):
-    """
-    Calculate the total potential alignment
-
-    Parameters
-    ----------
-    alignment_q_host_to_model: orm.Float
-        The correction energy derived from the alignment of the DFT difference
-        potential of the charge defect and the host to the model potential
-    charge: orm.Float
-        The charge state of the defect
-
-    Returns
-    -------
-    total_alignment
-        The calculated total potential alignment
-    """
-
-    alignment = charge.value * alignment_q_host_to_model.value
-
-    return orm.Float(alignment)
-
-
-@calcfunction
-def get_total_correction(model_correction, total_alignment):
+def get_total_correction(model_correction, potential_alignment, defect_charge):
     """
     Calculate the total correction, including the potential alignments
 
@@ -101,10 +115,9 @@ def get_total_correction(model_correction, total_alignment):
     ----------
     model_correction: orm.Float
         The correction energy derived from the electrostatic model
-    total_alignment: orm.Float
-        The correction energy derived from the alignment of the DFT difference
-        potential and the model potential, and alignment of the defect potential
-        in the q=0 charge state and the potential of the pristine host structure
+    potential_alignment: orm.Float
+        The correction derived from the alignment of the difference of DFT
+        potential of the charge defect and the pristine host structure to the model potential
 
     Returns
     -------
@@ -113,7 +126,7 @@ def get_total_correction(model_correction, total_alignment):
 
     """
 
-    total_correction = model_correction - total_alignment
+    total_correction = model_correction - defect_charge * potential_alignment
 
     return total_correction
 

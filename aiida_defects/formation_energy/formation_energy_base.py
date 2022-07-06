@@ -97,11 +97,11 @@ class FormationEnergyWorkchainBase(WorkChain):
         # Fixed
         spec.input_namespace('charge_model.fixed', required=False, populate_defaults=False,
             help="Inputs for a fixed charge model using a user-specified multivariate gaussian")
-        spec.input("charge_model.fixed.gaussian_params",
-            valid_type=orm.List,
-            help="A length 9 list of parameters needed to construct the "
-            "gaussian charge distribution. The format required is "
-            "[x0, y0, z0, sigma_x, sigma_y, sigma_z, cov_xy, cov_xz, cov_yz]")
+        spec.input("charge_model.fixed.covariance_matrix",
+            valid_type=orm.ArrayData,
+            help="The covariance matrix used to construct the gaussian charge distribution.")
+            # "gaussian charge distribution. The format required is "
+            # "[x0, y0, z0, sigma_x, sigma_y, sigma_z, cov_xy, cov_xz, cov_yz]")
         # Fitted
         spec.input_namespace('charge_model.fitted', required=False, populate_defaults=False,
             help="Inputs for a fitted charge model using a multivariate anisotropic gaussian.")
@@ -239,7 +239,7 @@ class FormationEnergyWorkchainBase(WorkChain):
 
         }
         if self.inputs.charge_model.model_type.value == 'fixed':
-            inputs['charge_model']['fixed'] = {'gaussian_params': self.inputs.charge_model.fixed.gaussian_params}
+            inputs['charge_model']['fixed'] = {'covariance_matrix': self.inputs.charge_model.fixed.covariance_matrix}
         else:
             inputs['charge_model']['fitted'] = {'tolerance': self.inputs.charge_model.fitted.tolerance,
                                                 'strict_fit': self.inputs.charge_model.fitted.strict_fit}
@@ -293,7 +293,7 @@ class FormationEnergyWorkchainBase(WorkChain):
             self.ctx.electrostatic_correction = (
                 correction_wc.outputs.electrostatic_correction
             )
-            self.ctx.total_alignment = correction_wc.outputs.total_alignment
+            self.ctx.potential_alignment = correction_wc.outputs.potential_alignment
 
     def run_chemical_potential_workchain(self):
         from .chemical_potential.chemical_potential import (
@@ -367,7 +367,7 @@ class FormationEnergyWorkchainBase(WorkChain):
 
         # Corrected formation energy with potential alignment
         self.ctx.e_f_corrected_aligned = get_corrected_aligned_formation_energy(
-            self.ctx.e_f_corrected, self.ctx.total_alignment
+            self.ctx.e_f_corrected, self.inputs.defect_charge, self.ctx.potential_alignment
         )
         self.report(
             "The computed corrected formation energy, including potential alignments, is {} eV".format(

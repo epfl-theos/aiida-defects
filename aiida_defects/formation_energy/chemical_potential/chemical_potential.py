@@ -140,7 +140,7 @@ class ChemicalPotentialWorkchain(WorkChain):
                                         self.inputs.dependent_element,
                                         self.inputs.tolerance
                                         )
-        self.report('The stability vertices are : {}'.format(np.around(self.ctx.stability_vertices.get_dict()['data'], 4)))
+        #self.report('The stability vertices are : {}'.format(np.around(self.ctx.stability_vertices.get_dict()['data'], 4)))
         # print(Dict_to_pandas_df(self.ctx.stability_vertices))
         self.out("stability_vertices", self.ctx.stability_vertices)
 

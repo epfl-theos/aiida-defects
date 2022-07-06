@@ -11,7 +11,7 @@ from aiida import orm
 from aiida.engine import WorkChain, calcfunction
 
 from aiida_defects.formation_energy.potential_alignment.utils import get_potential_difference
-from .utils import get_alignment, AllValuesMaskedError
+from .utils import get_alignment, AllValuesMaskedError, convert_Hat_to_Ryd
 
 
 class MaeAlignmentWorkchain(WorkChain):
@@ -72,9 +72,20 @@ class MaeAlignmentWorkchain(WorkChain):
         """
         Compute the difference of the  two potentials
         """
+
+        ### Temporary solution to convert potential to the same unit, has to be redone properly. 
+        ### The potentials generate by pp.x are in Rydberg while the model potential is in Hartree  
+        if len(self.inputs.second_potential.get_arraynames()) == 1:
+            #v_model = orm.ArrayData()
+            #v_model.set_array('data',self.inputs.second_potential.get_array(self.inputs.second_potential.get_arraynames()[0])*-2.0) # Hartree to Ry unit of potential - This is dirty - need to harmonise units
+            v_model = convert_Hat_to_Ryd(self.inputs.second_potential)
+        else:
+            v_model = self.inputs.second_potential
+
         self.ctx.potential_difference = get_potential_difference(
             first_potential = self.inputs.first_potential,
-            second_potential = self.inputs.second_potential
+            # second_potential = self.inputs.second_potential
+            second_potential = v_model
         )
 
 
