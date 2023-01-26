@@ -15,7 +15,8 @@ from .corrections.gaussian_countercharge.gaussian_countercharge import (
 from .utils import (
     get_raw_formation_energy,
     get_corrected_formation_energy,
-    get_corrected_aligned_formation_energy)
+    get_corrected_aligned_formation_energy,
+    get_charge_transistion_state)
 
 
 
@@ -69,9 +70,17 @@ class FormationEnergyWorkchainBase(WorkChain):
              valid_type=orm.Float,
              default=lambda: orm.Float(0.0),
              help="Fermi level position with respect to the valence band maximum")
-        spec.input("chempot_sign", 
+        spec.input("chempot_sign",
             valid_type=orm.Dict,
+            required=False,
             help="To determine the sign of the chemical potential. The convention is that removing an atom is negative")
+        
+        # Establish whether one wants to compute only the defect charge transition state
+        spec.input(
+            "trans_state_only",
+            valid_type=orm.Bool,
+            default=lambda: orm.Bool(False)
+        )
 
         # Chemical potential
         spec.input('run_chem_pot_wc', valid_type=orm.Bool, default=lambda: orm.Bool(True))
@@ -132,17 +141,29 @@ class FormationEnergyWorkchainBase(WorkChain):
 
         # Outputs
         spec.output(
-            "formation_energy_uncorrected", valid_type=orm.Float, required=True)
+            "formation_energy_uncorrected", valid_type=orm.Float, required=False)
         spec.output(
-            "formation_energy_corrected", valid_type=orm.Float, required=True)
+            "formation_energy_corrected", valid_type=orm.Float, required=False)
         spec.output(
-            "formation_energy_corrected_aligned", valid_type=orm.Float, required=True)
+            "formation_energy_corrected_aligned", valid_type=orm.Float, required=False)
+        spec.output(
+            "charge_defect_energy_uncorrected", valid_type=orm.Float, required=False)
+        spec.output(
+            "electrostatic_correction", valid_type=orm.Float, required=False)
+        spec.output(
+            "host_vbm", valid_type=orm.Float, required=False)
+        spec.output(
+            "potential_alignment", valid_type=orm.Float, required=False)
+        spec.output(
+            "charge_trans_state", valid_type=orm.Float, required=False)
 
         # Error codes
         spec.exit_code(201, "ERROR_INVALID_CORRECTION",
             message="The requested correction scheme is not recognised",)
         spec.exit_code(202, "ERROR_PARAMETER_OVERRIDE",
             message="Input parameter dictionary key cannot be set explicitly",)
+        spec.exit_code(203, "ERROR_PARAMETER_MISSING",
+            message="Missing input parameter",)
         spec.exit_code(301, "ERROR_CORRECTION_WORKCHAIN_FAILED",
             message="The correction scheme sub-workchain failed",)
         spec.exit_code(302, "ERROR_DFT_CALCULATION_FAILED",
@@ -169,12 +190,21 @@ class FormationEnergyWorkchainBase(WorkChain):
         if self.inputs.correction_scheme is not None:
             if self.inputs.correction_scheme not in correction_schemes_available:
                 return self.exit_codes.ERROR_INVALID_CORRECTION
+            
+        # When computing the formation energy, check if the sign of the chemical potentials is provided in input
+        # (this is to avoid defining chempot_sign when one is interested in computing only the transition state)
+        if not self.inputs.trans_state_only:
+            if not hasattr(self.inputs, "chempot_sign"):
+                return self.exit_codes.ERROR_PARAMETER_MISSING
 
     def if_run_dfpt(self):
         return self.inputs.run_dfpt
 
     def if_run_chem_pot_wc(self):
-        return self.inputs.run_chem_pot_wc
+        return self.inputs.run_chem_pot_wc.value and not self.inputs.trans_state_only.value
+    
+    def if_compute_formation_energy(self):
+        return not self.inputs.trans_state_only
 
     def correction_required(self):
         """
@@ -317,8 +347,8 @@ class FormationEnergyWorkchainBase(WorkChain):
         Check if the chemical potential workchain have finished correctly.
         If yes, assign the output to context
         """
-        
-        if self.inputs.run_chem_pot_wc:
+
+        if self.inputs.run_chem_pot_wc and not self.inputs.trans_state_only:
             chem_potential_wc = self.ctx["chemical_potential_workchain"]
             if not chem_potential_wc.is_finished_ok:
                 self.report(
@@ -330,6 +360,9 @@ class FormationEnergyWorkchainBase(WorkChain):
                 #return self.exit_codes.ERROR_SUB_PROCESS_FAILED_CORRECTION
             else:
                 self.ctx.chemical_potential = chem_potential_wc.outputs.chemical_potential
+        elif self.inputs.trans_state_only:
+            # No need for the chemical potentials
+            pass
         else:
             self.ctx.chemical_potential = self.inputs.chemical_potential
             
@@ -375,6 +408,29 @@ class FormationEnergyWorkchainBase(WorkChain):
             )
         )
         self.out("formation_energy_corrected_aligned", self.ctx.e_f_corrected_aligned)
+
+    def compute_transition_state(self):
+        """
+        Compute the thermodynamic charge transition state
+        """
+        self.ctx.charge_trans_state = get_charge_transistion_state(
+            self.ctx.defect_energy,
+            self.ctx.defect_energy_neutral,
+            self.ctx.electrostatic_correction,
+            self.inputs.defect_charge,
+            self.ctx.host_vbm,
+            self.ctx.potential_alignment
+        )
+        self.report(
+            "The computed charge transition state is {} eV".format(
+                self.ctx.charge_trans_state.value
+            )
+        )
+        self.out("charge_defect_energy_uncorrected", self.ctx.defect_energy)
+        self.out("electrostatic_correction", self.ctx.electrostatic_correction)
+        self.out("host_vbm", self.ctx.host_vbm)
+        self.out("potential_alignment", self.ctx.potential_alignment)
+        self.out("charge_trans_state", self.ctx.charge_trans_state)
 
     def raise_not_implemented(self):
         """

@@ -131,14 +131,17 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                         cls.prep_calc_dfpt_calculation,
                     ),
                     cls.get_permittivity,
-                    cls.run_gaussian_correction_workchain),
+                    cls.run_gaussian_correction_workchain,),
                 if_(cls.is_point_scheme)(
-                    cls.raise_not_implemented
+                    cls.raise_not_implemented,
                     #cls.prepare_point_correction_workchain,
                     #cls.run_point_correction_workchain),
                 ),
-                cls.check_correction_workchain),
-            cls.compute_formation_energy
+                cls.check_correction_workchain,),
+            if_(cls.if_compute_formation_energy)(
+                cls.compute_formation_energy,
+            ),
+            cls.compute_transition_state,
         )
 
     def prep_dft_calcs_gaussian_correction(self):
@@ -173,8 +176,8 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                 }
 
         if 'pseudopotential_family' in self.inputs.qe.dft.supercell:
-        	overrides['base']['pseudo_family'] = self.inputs.qe.dft.supercell.pseudopotential_family.value
-        	overrides['base_final_scf']['pseudo_family'] = self.inputs.qe.dft.supercell.pseudopotential_family.value
+            overrides['base']['pseudo_family'] = self.inputs.qe.dft.supercell.pseudopotential_family.value
+            overrides['base_final_scf']['pseudo_family'] = self.inputs.qe.dft.supercell.pseudopotential_family.value
         if 'parameters' in self.inputs.qe.dft.supercell:
             overrides['base']['pw']['parameters'] = self.inputs.qe.dft.supercell.parameters.get_dict()
             overrides['base_final_scf']['pw']['parameters'] = self.inputs.qe.dft.supercell.parameters.get_dict()
@@ -290,6 +293,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                 self.report('PWSCF for the defect structure (with charge 0) has failed with status {}'.format(defect_q0_calc.exit_status))
                 return self.exit_codes.ERROR_DFT_CALCULATION_FAILED
             else:
+                self.ctx.defect_energy_neutral = orm.Float(defect_q0_calc.outputs.output_parameters.get_dict()['energy']) # eV
                 self.report('The energy of neutral defect structure is: {} eV'.format(defect_q0_calc.outputs.output_parameters.get_dict()['energy']))
                 is_insulator, band_gap = orm.nodes.data.array.bands.find_bandgap(defect_q0_calc.outputs.output_band)
                 if not is_insulator:
@@ -297,6 +301,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         else:
             Defect_q0Node = orm.load_node(self.inputs.defect_q0_node.value)
             self.report('Extracting PWSCF for defect structure with charge {} from node PK={}'.format("0.0", self.inputs.defect_q0_node.value))
+            self.ctx.defect_energy_neutral = orm.Float(Defect_q0Node.outputs.output_parameters.get_dict()['energy']) # eV
             self.report('The energy of neutral defect structure is: {} eV'.format(Defect_q0Node.outputs.output_parameters.get_dict()['energy']))
             is_insulator, band_gap = orm.nodes.data.array.bands.find_bandgap(Defect_q0Node.outputs.output_band)
             if not is_insulator:
@@ -601,8 +606,8 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                 }
 
         if 'pseudopotential_family' in self.inputs.qe.dft.unitcell:
-        	overrides['base']['pseudo_family'] = self.inputs.qe.dft.unitcell.pseudopotential_family.value
-        	overrides['base_final_scf']['pseudo_family'] = self.inputs.qe.dft.unitcell.pseudopotential_family.value
+            overrides['base']['pseudo_family'] = self.inputs.qe.dft.unitcell.pseudopotential_family.value
+            overrides['base_final_scf']['pseudo_family'] = self.inputs.qe.dft.unitcell.pseudopotential_family.value
         if 'parameters' in self.inputs.qe.dft.unitcell:
             overrides['base']['pw']['parameters'] = self.inputs.qe.dft.unitcell.parameters.get_dict()
             overrides['base_final_scf']['pw']['parameters'] = self.inputs.qe.dft.unitcell.parameters.get_dict()

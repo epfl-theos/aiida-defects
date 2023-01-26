@@ -261,6 +261,7 @@ def get_corrected_formation_energy(e_f_uncorrected, correction):
     e_f_corrected = e_f_uncorrected + correction
     return e_f_corrected
 
+
 @calcfunction
 def get_corrected_aligned_formation_energy(e_f_corrected, defect_charge, alignment):
     """
@@ -318,3 +319,17 @@ def get_corrected_aligned_formation_energy(e_f_corrected, defect_charge, alignme
 #             'Launching PwBaseWorkChain for structure, {}, with charge {} (PK={})'
 #             .format(pw_inputs.structure, charge, future.pid))s
 #         return future
+
+
+@calcfunction
+def get_charge_transistion_state(defect_energy, defect_energy_neutral, correction, 
+                                 charge, valence_band_maximum, alignment):
+    """
+    Compute the energy of the thermodynamic charge transition state
+    (including electrostatic correction and potential alignment).
+
+    NB: for the moment only neutral-to-charge transitions are computed (and not charge-to-charge)
+    """
+    charge_trans_state = ( defect_energy_neutral - defect_energy - correction ) / charge - \
+                         valence_band_maximum + alignment
+    return charge_trans_state
