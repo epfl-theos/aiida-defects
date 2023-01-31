@@ -80,6 +80,8 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             help="Settings for the PW.x calculations")
         spec.input("qe.dft.supercell.pseudopotential_family", valid_type=orm.Str,
             help="The pseudopotential family for use with the code")
+        spec.input("qe.dft.supercell.kpoints", valid_type=orm.KpointsData, required=False,
+            help="k-points for the PW.x calculations")
 
         # DFT inputs (PW.x) for the unitcell calculation for the dielectric constant
         spec.input("qe.dft.unitcell.code", valid_type=orm.Code,
@@ -94,6 +96,8 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             help="Settings for the PW.x calculations")
         spec.input("qe.dft.unitcell.pseudopotential_family", valid_type=orm.Str,
             help="The pseudopotential family for use with the code")
+        spec.input("qe.dft.unitcell.kpoints", valid_type=orm.KpointsData, required=False,
+            help="k-points for the PW.x calculations")
     
         # Postprocessing inputs (PP.x)
         spec.input("qe.pp.code",
@@ -199,6 +203,14 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             inputs['base_final_scf']['pw']['metadata'] = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
             inputs['base_final_scf']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
 
+            # K-points
+            try:
+                inputs['base']['kpoints'] = self.inputs.qe.dft.supercell.kpoints
+                inputs['base_final_scf']['kpoints'] = self.inputs.qe.dft.supercell.kpoints
+            except AttributeError:
+                # if kpoints are not provided in input, use the protocol
+                pass
+
             #future = self.submit(PwRelaxWorkChain, **inputs)
             future = self.submit(inputs)
             self.report(
@@ -219,6 +231,14 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             inputs['base']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
             inputs['base_final_scf']['pw']['metadata'] = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
             inputs['base_final_scf']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
+
+            # K-points
+            try:
+                inputs['base']['kpoints'] = self.inputs.qe.dft.supercell.kpoints
+                inputs['base_final_scf']['kpoints'] = self.inputs.qe.dft.supercell.kpoints
+            except AttributeError:
+                # if kpoints are not provided in input, use the protocol
+                pass
 
             #future = self.submit(PwRelaxWorkChain, **inputs)
             future = self.submit(inputs)
@@ -243,6 +263,14 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             inputs['base']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
             inputs['base_final_scf']['pw']['metadata'] = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
             inputs['base_final_scf']['pw']['settings'] = self.inputs.qe.dft.supercell.settings
+
+            # K-points
+            try:
+                inputs['base']['kpoints'] = self.inputs.qe.dft.supercell.kpoints
+                inputs['base_final_scf']['kpoints'] = self.inputs.qe.dft.supercell.kpoints
+            except AttributeError:
+                # if kpoints are not provided in input, use the protocol
+                pass
 
             #future = self.submit(PwRelaxWorkChain, **inputs)
             future = self.submit(inputs)
@@ -342,7 +370,6 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         pp_inputs = PpCalculation.get_builder()
         pp_inputs.code = self.inputs.qe.pp.code
         pp_inputs.metadata = self.inputs.qe.pp.scheduler_options.get_dict()
-
         # Fixed settings
         #pp_inputs.plot_number = orm.Int(0)  # Charge density
         #pp_inputs.plot_dimension = orm.Int(3)  # 3D

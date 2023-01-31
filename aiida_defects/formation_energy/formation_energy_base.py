@@ -201,7 +201,7 @@ class FormationEnergyWorkchainBase(WorkChain):
         return self.inputs.run_dfpt
 
     def if_run_chem_pot_wc(self):
-        return self.inputs.run_chem_pot_wc.value and not self.inputs.trans_state_only.value
+        return self.inputs.run_chem_pot_wc and not self.inputs.trans_state_only
     
     def if_compute_formation_energy(self):
         return not self.inputs.trans_state_only
@@ -348,7 +348,7 @@ class FormationEnergyWorkchainBase(WorkChain):
         If yes, assign the output to context
         """
 
-        if self.inputs.run_chem_pot_wc and not self.inputs.trans_state_only:
+        if self.if_run_chem_pot_wc():
             chem_potential_wc = self.ctx["chemical_potential_workchain"]
             if not chem_potential_wc.is_finished_ok:
                 self.report(
