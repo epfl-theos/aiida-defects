@@ -53,7 +53,7 @@ class ChemicalPotentialWorkchain(WorkChain):
         spec.output('stability_vertices', valid_type=Dict)
         spec.output('matrix_of_constraints', valid_type=Dict)
         spec.output('chemical_potential', valid_type=Dict)
-        spec.output('stability_region', valid_type=StabilityData)
+        #spec.output('stability_region', valid_type=StabilityData)
 
         spec.exit_code(601, "ERROR_CHEMICAL_POTENTIAL_FAILED",
             message="The stability region can't be determined. The compound is probably unstable"
@@ -100,7 +100,7 @@ class ChemicalPotentialWorkchain(WorkChain):
             self.report('WARNING! The compound {} is predicted to be unstable. For the purpose of determining the stability region, we shift its formation energy down so that it is on the convex hull. Use with care!'.format(self.inputs.compound.value))
             formation_energy_dict[self.inputs.compound.value] -= composition.num_atoms*(E_hull+0.005) # the factor 0.005 is added for numerical reason
         
-        self.ctx.formation_energy_dict = Dict(dict=formation_energy_dict)
+        self.ctx.formation_energy_dict = Dict(formation_energy_dict)
 
     def generate_matrix_of_constraints(self):
 
@@ -178,7 +178,7 @@ class ChemicalPotentialWorkchain(WorkChain):
             sub_vertices = self.ctx.stability_vertices
         else:
             centroid = self.ctx.centroid.get_dict()
-            fixed_chempot = Dict(dict={k: np.array(centroid['data'])[:,i] for i, k in enumerate(centroid['column'][:-3])}) # Keep the last 3 columns
+            fixed_chempot = Dict({k: np.array(centroid['data'])[:,i] for i, k in enumerate(centroid['column'][:-3])}) # Keep the last 3 columns
             sub_master_eqn = substitute_chemical_potential(self.ctx.master_eqn, fixed_chempot)
             sub_matrix_eqns = substitute_chemical_potential(self.ctx.matrix_eqns, fixed_chempot)
             # print(Dict_to_pandas_df(sub_matrix_eqns))
@@ -190,10 +190,10 @@ class ChemicalPotentialWorkchain(WorkChain):
                             self.inputs.tolerance
                             )
 
-        stability_region = get_StabilityData(
-                            sub_matrix_eqns,
-                            sub_vertices,
-                            self.inputs.compound,
-                            self.inputs.dependent_element,
-                            )
-        self.out('stability_region', stability_region)
+        #stability_region = get_StabilityData(
+        #                    sub_matrix_eqns,
+        #                    sub_vertices,
+        #                    self.inputs.compound,
+        #                    self.inputs.dependent_element,
+        #                    )
+        #self.out('stability_region', stability_region)

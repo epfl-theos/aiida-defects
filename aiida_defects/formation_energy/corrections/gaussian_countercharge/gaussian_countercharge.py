@@ -334,14 +334,18 @@ class GaussianCounterChargeWorkchain(WorkChain):
         
         first_array_shape = self.inputs.v_defect_q.get_array('data').shape
         second_array_shape = self.inputs.v_host.get_array('data').shape
+        # second_array_shape = self.inputs.v_defect_q0.get_array('data').shape
         if first_array_shape != second_array_shape:
             target_shape = orm.List(list=np.max(np.vstack((first_array_shape, second_array_shape)), axis=0).tolist())
             first_array = get_interpolation(self.inputs.v_defect_q, target_shape)#.get_array('interpolated_array')
             second_array = get_interpolation(self.inputs.v_host, target_shape)#.get_array('interpolated_array')
+            # second_array = get_interpolation(self.inputs.v_defect_q0, target_shape)
             self.ctx.v_defect_q_host = get_potential_difference(first_array, second_array)
         else:
             self.ctx.v_defect_q_host = get_potential_difference(
-                    self.inputs.v_defect_q, self.inputs.v_host)
+                   self.inputs.v_defect_q, self.inputs.v_host)
+            # self.ctx.v_defect_q_host = get_potential_difference(
+            #         self.inputs.v_defect_q, self.inputs.v_defect_q0)
             #self.out('v_dft_difference', self.ctx.v_defect_q_q0)
 
 
@@ -395,7 +399,6 @@ class GaussianCounterChargeWorkchain(WorkChain):
             "allow_interpolation": orm.Bool(True),
             "mae":{
                 "first_potential": self.ctx.v_defect_q_host,
-                # "second_potential": v_model,
                 "second_potential": self.ctx.v_model, 
                 "defect_site": self.inputs.defect_site
             },

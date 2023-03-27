@@ -23,9 +23,9 @@ def pandas_df_to_Dict(df, index=False):
     If index=False, the index of df won't be converted to (keys, values) pair in the Dict
     '''
     if index:
-        return Dict(dict={'column': df.columns, 'index': df.index, 'data': df.to_numpy()})
+        return Dict({'column': df.columns, 'index': df.index, 'data': df.to_numpy()})
     else:
-        return Dict(dict={'column': df.columns, 'data': df.to_numpy()})
+        return Dict({'column': df.columns, 'data': df.to_numpy()})
 
 def Dict_to_pandas_df(py_dict):
     '''
@@ -204,7 +204,7 @@ def get_stability_vertices(master_eqn, matrix_eqns, compound, dependent_element,
     # get the chemical potentials of the dependent element
     dependent_chempot = get_dependent_chempot(master_eqn, stability_corners.to_dict(orient='list'), compound, dependent_element)
     stability_corners = np.append(stability_corners, np.reshape(dependent_chempot, (-1,1)), axis =1)
-    stability_vertices = Dict(dict={'column': matrix_eqns['column'][:-1]+[dependent_element], 'data': stability_corners})
+    stability_vertices = Dict({'column': matrix_eqns['column'][:-1]+[dependent_element], 'data': stability_corners})
     
     return stability_vertices
 
@@ -245,7 +245,7 @@ def get_centroid_of_stability_region(stability_corners, master_eqn, matrix_eqns,
     # Add the corresponding chemical potential of the dependent element
     dependent_chempot = get_dependent_chempot(master_eqn, ctr_stability.to_dict(orient='list'), compound, dependent_element)
     ctr_stability = np.append(ctr_stability, np.reshape(dependent_chempot, (-1,1)), axis=1)
-    ctr_stability = Dict(dict={'column': matrix_eqns['column'][:-1]+[dependent_element], 'data': ctr_stability})
+    ctr_stability = Dict({'column': matrix_eqns['column'][:-1]+[dependent_element], 'data': ctr_stability})
 
     return ctr_stability
 
@@ -394,7 +394,7 @@ def get_absolute_chemical_potential(relative_chemical_potential, ref_energy):
     for element in relative_chempot.columns:
         absolute_chemical_potential[element] = ref_energy[element] + np.array(relative_chempot[element])
 
-    return Dict(dict=absolute_chemical_potential)
+    return Dict(absolute_chemical_potential)
 
 @calcfunction
 def get_StabilityData(matrix_eqns, stability_vertices, compound, dependent_element):

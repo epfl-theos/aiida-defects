@@ -141,6 +141,7 @@ class PotentialAlignmentWorkchain(WorkChain):
         # all other axis keep the correct ordering.
         # If the reasoning was compelling, this could be relaxed later to the product type
         # situation where having a (3,1) and a (1,3) would result in a target grid of (3,3)
+        
         sorted_shapes = sorted(list(array_shapes.values()))
         for index, shape in enumerate(sorted_shapes):
             for axis in [1,2]:   # Sorting is correct for axis 0, now check if the others are okay
