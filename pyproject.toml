@@ -37,7 +37,7 @@ testing = [
 ]
 
 [project.entry-points."aiida.data"]
-"array.stability" = "aiida_defects.data.data:StabilityData"
+"defects.array.stability" = "aiida_defects.data.data:StabilityData"
 
 [project.entry-points."aiida.workflows"]
 "defects.formation_energy.qe" = "aiida_defects.formation_energy.formation_energy_qe:FormationEnergyWorkchainQE"

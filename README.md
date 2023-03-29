@@ -16,9 +16,9 @@ Please also remember to cite the [AiiDA paper](https://doi.org/10.1038/s41597-02
 Quick Setup
 ===========
 
-Install this package by running the following in your shell:
+Install the latest release of this package by running the following in your shell:
 
-    $ pip install .
+    $ pip install aiida-defects
 
 This will install all of the prerequisites automatically (including for the optional docs) 
 in your environment, including AiiDA core, if it not already installed. 
