@@ -55,14 +55,15 @@ class FermiLevelWorkchain(WorkChain):
         Setup the calculation
         """
         chempot_dict = self.inputs.chem_potentials.get_dict()
-        for key in chempot_dict:
-            data_array = np.ones_like(chempot_dict[key])
-            v_data = ArrayData()
-            v_data.set_array('data', data_array)
-            self.ctx.input_chem_shape = v_data
+#        for key, value in chempot_dict.items():
+#            data_array = np.ones_like(value)
+#            #print(data_array)
+#            v_data = ArrayData()
+#            v_data.set_array('data', data_array)
+#            self.ctx.input_chem_shape = v_data
 
         # extracting the DOS of the unitcell, assuming that the calculation is non-spin polarized.
-        dos_x = self.inputs.DOS.get_x()[1] - self.inputs.valence_band_maximum.value
+        dos_x = self.inputs.DOS.get_x()[1] - self.inputs.valence_band_maximum.value # Shift the top of valence band to zero
         v_data = ArrayData()
         v_data.set_array('data', dos_x)
         self.ctx.dos_x = v_data
@@ -88,7 +89,7 @@ class FermiLevelWorkchain(WorkChain):
         try:
             E_Fermi = solve_for_sc_fermi(self.inputs.defect_data, 
                                         self.inputs.chem_potentials, 
-                                        self.ctx.input_chem_shape, 
+                                        #self.ctx.input_chem_shape, 
                                         self.inputs.temperature, 
                                         self.inputs.unitcell, 
                                         self.inputs.band_gap,

@@ -228,7 +228,7 @@ def get_charge_model(cell_matrix, defect_charge, dimensions, gaussian_params, pe
         Charge state of the defect
     dimensions: 3x1 array-like
         Dimensions of grid to compute charge on.
-    gaussian_params: list (length 6)
+    gaussian_params: list (length 9)
         Parameters determining the distribution position and shape obtained
         by the fitting procedure.
 
@@ -262,8 +262,8 @@ def get_charge_model(cell_matrix, defect_charge, dimensions, gaussian_params, pe
     print("DEBUG: Integrated charge density (scaled) = {}".format(get_integral(g, cell_matrix)))
 
     # Compensating jellium background
-    g = g - np.sum(g)/np.prod(g.shape)
-    print("DEBUG: Integrated charge density (jellium) = {}".format(get_integral(g, cell_matrix)))
+    # g = g - np.sum(g)/np.prod(g.shape)
+    # print("DEBUG: Integrated charge density (jellium) = {}".format(get_integral(g, cell_matrix)))
 
     # Pack the array
     model_charge_array = orm.ArrayData()
@@ -461,12 +461,14 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
     # Compute the model potential
     v_model = np.divide(
         charge_density_g, dielectric, where=dielectric != 0.0)
-    V_model_g = v_model * 4. * np.pi
-
+    V_model_g = 4. * np.pi * v_model
+    
+    # Set the component G=0 to zero
     V_model_g[dimensions[0] + 1, dimensions[1] + 1, dimensions[2] + 1] = 0.0
 
     # Get the model potential in real space
-    V_model_r = get_inverse_fft(V_model_g) * CONSTANTS.hartree_to_ev
+    # V_model_r = get_inverse_fft(V_model_g) * CONSTANTS.hartree_to_ev
+    V_model_r = get_inverse_fft(V_model_g)
 
     # Pack up the array
     V_model_array = orm.ArrayData()
@@ -481,7 +483,8 @@ def get_energy(potential, charge_density, cell_matrix):
     Calculate the total energy for a given model potential
     """
     cell_matrix = cell_matrix.get_array('cell_matrix')
-    potential = potential.get_array('model_potential')
+    # potential = potential.get_array('model_potential')
+    potential = potential.get_array('model_potential') * CONSTANTS.hartree_to_ev
     charge_density = charge_density.get_array('model_charge')
 
     energy = np.real(0.5 * get_integral(charge_density*potential, cell_matrix))

@@ -19,7 +19,7 @@ from aiida_quantumespresso.common.types import RelaxType
 
 from aiida_defects.formation_energy.formation_energy_base import FormationEnergyWorkchainBase
 from aiida_defects.formation_energy.utils import run_pw_calculation
-from .utils import get_vbm, get_raw_formation_energy, get_corrected_formation_energy, get_corrected_aligned_formation_energy
+from .utils import get_vbm, get_raw_formation_energy, get_data_array, get_corrected_formation_energy, get_corrected_aligned_formation_energy
 
 PpCalculation = CalculationFactory('quantumespresso.pp')
 
@@ -409,10 +409,12 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # Host
         host_pp = self.ctx['calc_v_host']
         if host_pp.is_finished_ok:
-            data_array = host_pp.outputs.output_data.get_array('data')
-            v_data = orm.ArrayData()
-            v_data.set_array('data', data_array)
-            self.ctx.v_host = v_data
+            # data_array = host_pp.outputs.output_data.get_array('data')
+            # v_data = orm.ArrayData()
+            # v_data.set_array('data', data_array)
+            # self.ctx.v_host = v_data
+            # self.ctx.v_host = host_pp.outputs.output_data
+            self.ctx.v_host = get_data_array(host_pp.outputs.output_data)
         else:
             self.report(
                 'Post processing for the host structure has failed with status {}'.format(host_pp.exit_status))
@@ -421,10 +423,12 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # Defect (q=0)
         defect_q0_pp = self.ctx['calc_v_defect_q0']
         if defect_q0_pp.is_finished_ok:
-            data_array = defect_q0_pp.outputs.output_data.get_array('data')
-            v_data = orm.ArrayData()
-            v_data.set_array('data', data_array)
-            self.ctx.v_defect_q0 = v_data
+            # data_array = defect_q0_pp.outputs.output_data.get_array('data')
+            # v_data = orm.ArrayData()
+            # v_data.set_array('data', data_array)
+            # self.ctx.v_defect_q0 = v_data
+            # self.ctx.v_defect_q0 = defect_q0_pp.outputs.output_data
+            self.ctx.v_defect_q0 = get_data_array(defect_q0_pp.outputs.output_data)
         else:
             self.report(
                 'Post processing for the defect structure (with charge 0) has failed with status {}'
@@ -434,52 +438,18 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # Defect (q=q)
         defect_q_pp = self.ctx['calc_v_defect_q']
         if defect_q_pp.is_finished_ok:
-            data_array = defect_q_pp.outputs.output_data.get_array('data')
-            v_data = orm.ArrayData()
-            v_data.set_array('data', data_array)
-            self.ctx.v_defect_q = v_data
+            # data_array = defect_q_pp.outputs.output_data.get_array('data')
+            # v_data = orm.ArrayData()
+            # v_data.set_array('data', data_array)
+            # self.ctx.v_defect_q = v_data
+            # self.ctx.v_defect_q = defect_q_pp.outputs.output_data
+            self.ctx.v_defect_q = get_data_array(defect_q_pp.outputs.output_data)
         else:
             self.report(
                 'Post processing for the defect structure (with charge {}) has failed with status {}'
                 .format(self.inputs.defect_charge.value,defect_q_pp.exit_status))
             return self.exit_codes.ERROR_PP_CALCULATION_FAILED
-
-    def get_kohn_sham_potentials(self):
-        """
-        Obtain the electrostatic potentials from the PWSCF calculations.
-        """
-        # User inputs
-        pp_inputs = self.inputs.qe.pp.code.get_builder()
-        pp_inputs.metadata = self.inputs.qe.pp.scheduler_options.get_dict()
-
-        # Fixed settings
-        pp_inputs.plot_number = orm.Int(1)  # Kohn-Sham potential
-        pp_inputs.plot_dimension = orm.Int(3)  # 3D
-
-        # Host
-        if self.inputs.run_pw_host:
-            pp_inputs.parent_folder = self.ctx['calc_host'].outputs.remote_folder
-        else:
-            HostNode = orm.load_node(self.inputs.host_node.value)
-            pp_inputs.parent_folder =  HostNode.outputs.remote_folder
-
-        future = self.submit(pp_inputs)
-        self.report('Extracting Kohn-Sham potential of host structure (PK={}) with charge {} (PK={})'.
-            format(self.inputs.host_structure.pk, "0.0", future.pk))
-        self.to_context(**{'V_KS_host': future})
-
-        # Defect (q=q)
-        if self.inputs.run_pw_defect_q:
-            pp_inputs.parent_folder = self.ctx['calc_defect_q'].outputs.remote_folder
-        else:
-            Defect_qNode = orm.load_node(self.inputs.defect_q_node.value)
-            pp_inputs.parent_folder = Defect_qNode.outputs.remote_folder
             
-        future = self.submit(pp_inputs)
-        self.report('Extracting Kohn-Sham potential of defect structure (PK={}) with charge {} (PK={})'
-            .format(self.inputs.defect_structure.pk, self.inputs.defect_charge.value, future.pk))
-        self.to_context(**{'V_KS_defect_q': future})
-
     def get_charge_density(self):
         """
         Obtain the electrostatic potentials from the PWSCF calculations.
@@ -555,10 +525,12 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # Host
         host_pp = self.ctx['calc_rho_host']
         if host_pp.is_finished_ok:
-            data_array = host_pp.outputs.output_data.get_array('data')
-            v_data = orm.ArrayData()
-            v_data.set_array('data', data_array)
-            self.ctx.rho_host = v_data
+            # data_array = host_pp.outputs.output_data.get_array('data')
+            # v_data = orm.ArrayData()
+            # v_data.set_array('data', data_array)
+            # self.ctx.rho_host = v_data
+            # self.ctx.rho_host = host_pp.outputs.output_data
+            self.ctx.rho_host = get_data_array(host_pp.outputs.output_data)
         else:
             self.report(
                 'Post processing for the host structure has failed with status {}'.format(host_pp.exit_status))
@@ -567,10 +539,12 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # Defect (q=0)
         defect_q0_pp = self.ctx['calc_rho_defect_q0']
         if defect_q0_pp.is_finished_ok:
-            data_array = defect_q0_pp.outputs.output_data.get_array('data')
-            v_data = orm.ArrayData()
-            v_data.set_array('data', data_array)
-            self.ctx.rho_defect_q0 = v_data
+            # data_array = defect_q0_pp.outputs.output_data.get_array('data')
+            # v_data = orm.ArrayData()
+            # v_data.set_array('data', data_array)
+            # self.ctx.rho_defect_q0 = v_data
+            # self.ctx.rho_defect_q0 = defect_q0_pp.outputs.output_data
+            self.ctx.rho_defect_q0 = get_data_array(defect_q0_pp.outputs.output_data)
         else:
             self.report(
                 'Post processing for the defect structure (with charge 0) has failed with status {}'
@@ -580,10 +554,12 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         # Defect (q=q)
         defect_q_pp = self.ctx['calc_rho_defect_q']
         if defect_q_pp.is_finished_ok:
-            data_array = defect_q_pp.outputs.output_data.get_array('data')
-            v_data = orm.ArrayData()
-            v_data.set_array('data', data_array)
-            self.ctx.rho_defect_q = v_data
+            # data_array = defect_q_pp.outputs.output_data.get_array('data')
+            # v_data = orm.ArrayData()
+            # v_data.set_array('data', data_array)
+            # self.ctx.rho_defect_q = v_data
+            # self.ctx.rho_defect_q = defect_q_pp.outputs.output_data
+            self.ctx.rho_defect_q = get_data_array(defect_q_pp.outputs.output_data)
         else:
             self.report(
                 'Post processing for the defect structure (with charge 0) has failed with status {}'
