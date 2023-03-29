@@ -7,8 +7,8 @@ The package is available for download from [GitHub](http://github.com/aiida-defe
 
 If you use AiiDA-Defects in your work, please cite:
 
-*AiiDA-defects: An automated and fully reproducible workflow for the complete characterization of defect chemistry in functional materials*
-[doi.org/10.48550/arXiv.2303.12465](https://doi.org/10.48550/arXiv.2303.12465)
+*AiiDA-defects: An automated and fully reproducible workflow for the complete characterization of defect chemistry in functional materials* 
+[doi.org/10.48550/arXiv.2303.12465 (preprint)](https://doi.org/10.48550/arXiv.2303.12465)
 
 Please also remember to cite the [AiiDA paper](https://doi.org/10.1038/s41597-020-00638-4).
 
