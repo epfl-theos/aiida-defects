@@ -15,7 +15,7 @@ from aiida.engine import WorkChain, calcfunction
 #   from aiida_defects.pp.fft_tools import avg_potential_at_core
 
 
-class LanyZungerWorkchain(WorkChain):
+class LanyZungerAlignmentWorkchain(WorkChain):
     """
     Compute the electrostatic potential alignment via the Lany-Zunger method.
     See: S. Lany and A. Zunger, PRB 78, 235104 (2008)
@@ -24,29 +24,21 @@ class LanyZungerWorkchain(WorkChain):
 
     @classmethod
     def define(cls, spec):
-        super(LanyZungerWorkchain, cls).define(spec)
+        super(LanyZungerAlignmentWorkchain, cls).define(spec)
         spec.input('bulk_structure', valid_type=orm.StructureData),
-
         spec.input(
             'e_tol',
-            valid_type=orm.Float(),
-            default=orm.Float(0.2),
-            help=
-            "Energy tolerance to decide which atoms to exclude to compute alignment"
-        )
-
+            valid_type=orm.Float,
+            default=lambda: orm.Float(0.2),
+            help="Energy tolerance to decide which atoms to exclude to compute alignment")
         spec.input('first_potential', valid_type=orm.ArrayData)
         spec.input('second_potential', valid_type=orm.ArrayData)
         spec.input(
             'alignment_scheme',
             valid_type=orm.Str,
-            default=orm.Str('lany-zunger'))
-        spec.input('interpolate', valid_type=orm.Bool, default=orm.Bool(False))
+            default=lambda: orm.Str('lany-zunger'))
+        spec.input('interpolate', valid_type=orm.Bool, default=lambda: orm.Bool(False))
         spec.outline(
-            cls.setup,
-            cls.do_interpolation,
-            cls.calculate_alignment,
-            cls.results,
         )
         #spec.expose_outputs(PwBaseWorkChain, exclude=('output_structure',))
         spec.output('alignment_required', valid_type=orm.Float, required=True)
