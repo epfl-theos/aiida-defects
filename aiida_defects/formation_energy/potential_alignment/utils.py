@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -38,7 +38,7 @@ def get_potential_difference(first_potential, second_potential):
         first_potential.get_arraynames()[0])
     second_array = second_potential.get_array(
         second_potential.get_arraynames()[0])
-    
+
 #    if first_array.shape != second_array.shape:
 #        target_shape = orm.List(list=np.max(np.vstack((first_array.shape, second_array.shape)), axis=0).tolist())
 #        first_array = get_interpolation(first_potential, target_shape).get_array('interpolated_array')

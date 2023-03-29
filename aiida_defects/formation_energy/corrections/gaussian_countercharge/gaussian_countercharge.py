@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -15,7 +15,7 @@ from .model_potential.model_potential import ModelPotentialWorkchain
 from aiida_defects.formation_energy.potential_alignment.utils import get_potential_difference, get_interpolation
 from .utils import get_total_correction, get_charge_model_fit, fit_energies, calc_correction, is_isotrope
 from qe_tools import CONSTANTS
-import numpy as np 
+import numpy as np
 
 class GaussianCounterChargeWorkchain(WorkChain):
     """
@@ -331,7 +331,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         #self.ctx.v_defect_q_q0 = get_potential_difference(
         #    self.inputs.v_defect_q, self.inputs.v_defect_q0)
         #self.out('v_dft_difference', self.ctx.v_defect_q_q0)
-        
+
         first_array_shape = self.inputs.v_defect_q.get_array('data').shape
         second_array_shape = self.inputs.v_host.get_array('data').shape
         # second_array_shape = self.inputs.v_defect_q0.get_array('data').shape
@@ -385,7 +385,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
         #     "mae":{
         #         "first_potential": self.ctx.v_defect_q_q0,
         #         # "second_potential": v_model,
-        #         "second_potential": self.ctx.v_model, 
+        #         "second_potential": self.ctx.v_model,
         #         "defect_site": self.inputs.defect_site
         #     },
         # }
@@ -399,7 +399,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             "allow_interpolation": orm.Bool(True),
             "mae":{
                 "first_potential": self.ctx.v_defect_q_host,
-                "second_potential": self.ctx.v_model, 
+                "second_potential": self.ctx.v_model,
                 "defect_site": self.inputs.defect_site
             },
         }
@@ -467,7 +467,7 @@ class GaussianCounterChargeWorkchain(WorkChain):
             defect_charge = self.inputs.defect_charge.value
             # # Epsilon is now expected to be a tensor, and so to get a scalar here we diagonalise.
             # epsilon_tensor = self.inputs.epsilon.get_array('epsilon')
-            epsilon = np.mean(np.diag(self.inputs.epsilon.get_array('epsilon'))) 
+            epsilon = np.mean(np.diag(self.inputs.epsilon.get_array('epsilon')))
             self.report(
                     "Computing the energy of the isolated gaussian analytically"
             )

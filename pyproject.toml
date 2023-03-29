@@ -1,0 +1,62 @@
+[build-system]
+# build the package with [flit](https://flit.readthedocs.io)
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "aiida-defects"
+dynamic = ["version"]  # read from aiida_defects/__init__.py
+description = "AiiDA-Defects is a plugin for the AiiDA computational materials science framework, and provides tools and automated workflows for the study of defects in materials."
+authors = [{name = "The AiiDA-Defects developers"}]
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+    "Programming Language :: Python",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Development Status :: 4 - Beta",
+    "Framework :: AiiDA"
+]
+keywords = ["aiida", "plugin"]
+requires-python = ">=3.8"
+dependencies = [
+    "aiida-core>=2.0,<3",
+    "aiida-quantumespresso>=4.2.0",
+]
+
+[project.urls]
+Source = "https://github.com/epfl-theos/aiida-defects"
+
+[project.optional-dependencies]
+testing = [
+    "pgtest~=1.3.1",
+    "wheel~=0.31",
+    "pytest~=6.0",
+    "pytest-cov"
+]
+
+[project.entry-points."aiida.data"]
+"array.stability" = "aiida_defects.data.data:StabilityData"
+
+[project.entry-points."aiida.workflows"]
+"defects.formation_energy.qe" = "aiida_defects.formation_energy.formation_energy_qe:FormationEnergyWorkchainQE"
+"defects.formation_energy.chemical_potential" = "aiida_defects.formation_energy.chemical_potential.chemical_potential:ChemicalPotentialWorkchain"
+"defects.formation_energy.siesta" = "aiida_defects.formation_energy.formation_energy_siesta:FormatonEnergyWorkchainSiesta"
+"defects.formation_energy.corrections.gaussian_countercharge" = "aiida_defects.formation_energy.corrections.gaussian_countercharge.gaussian_countercharge:GaussianCounterChargeWorkchain"
+"defects.formation_energy.corrections.gaussian_countercharge.model_potential" = "aiida_defects.formation_energy.corrections.gaussian_countercharge.model_potential.model_potential:ModelPotentialWorkchain"
+"defects.formation_energy.corrections.point_countercharge" = "aiida_defects.formation_energy.corrections.point_countercharge.point_countercharge:PointCounterChargeWorkchain"
+"defects.formation_energy.potential_alignment" = "aiida_defects.formation_energy.potential_alignment.potential_alignment:PotentialAlignmentWorkchain"
+
+[tool.flit.module]
+name = "aiida_defects"
+
+
+[tool.pytest.ini_options]
+# Configuration for [pytest](https://docs.pytest.org)
+python_files = "test_*.py example_*.py"
+filterwarnings = [
+    "ignore::DeprecationWarning:aiida:",
+    "ignore::DeprecationWarning:plumpy:",
+    "ignore::DeprecationWarning:yaml:",
+]

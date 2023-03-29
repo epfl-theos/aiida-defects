@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -123,7 +123,7 @@ def get_xyz_coords(cell_matrix, dimensions):
 def generate_charge_model(cell_matrix, peak_charge=None):
     """
     Return a function to compute a periodic gaussian on a grid.
-    The returned function can be used for fitting. 
+    The returned function can be used for fitting.
 
     Parameters
     ----------
@@ -462,7 +462,7 @@ def get_model_potential(cell_matrix, dimensions, charge_density, epsilon):
     v_model = np.divide(
         charge_density_g, dielectric, where=dielectric != 0.0)
     V_model_g = 4. * np.pi * v_model
-    
+
     # Set the component G=0 to zero
     V_model_g[dimensions[0] + 1, dimensions[1] + 1, dimensions[2] + 1] = 0.0
 

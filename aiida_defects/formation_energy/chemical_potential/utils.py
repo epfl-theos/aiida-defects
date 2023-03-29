@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -38,11 +38,11 @@ def Dict_to_pandas_df(py_dict):
 
 def get_full_matrix_of_constraints(formation_energy_dict, compound, dependent_element, dopant):
     '''
-    The systems of linear constraints (before eliminating the dependent variable and the 'compound'), i.e. matrix of constraints is constructed as 
-    a pandas dataframe. Each columns corresponds to each element in the compounds and dopants ('Li', 'P', ...) while the last 
-    column is the formation energy (per fu) of each stable compounds in the phase diagram. The column before the last column is 
+    The systems of linear constraints (before eliminating the dependent variable and the 'compound'), i.e. matrix of constraints is constructed as
+    a pandas dataframe. Each columns corresponds to each element in the compounds and dopants ('Li', 'P', ...) while the last
+    column is the formation energy (per fu) of each stable compounds in the phase diagram. The column before the last column is
     always reserved for the depedent element. Each row is indexed by the formula of each stable compound.
-    When it is not possible to use pandas dataframe for ex. to pass as argument to a calcfuntion, the dataframe is 'unpacked' as 
+    When it is not possible to use pandas dataframe for ex. to pass as argument to a calcfuntion, the dataframe is 'unpacked' as
     a python dictionary in the form {'column': , 'index': , 'data': }
     '''
 
@@ -91,26 +91,26 @@ def get_full_matrix_of_constraints(formation_energy_dict, compound, dependent_el
 # def get_master_equation(raw_constraint_coefficients, compound):
 #     '''
 #     The 'master' equation is simply the equality corresponding to the formation energy of the
-#     compound under consideration. For ex. if we are studying the defect in Li3PO4, the master 
+#     compound under consideration. For ex. if we are studying the defect in Li3PO4, the master
 #     equation is simply: 3*mu_Li + mu_P + 4*mu_O = Ef where Ef is the formation energy per fu
 #     of Li3PO4. This equation is needed to replace the dependent chemical potential from the set
-#     of other linear constraints and to recover the chemical potential of the dependent element 
+#     of other linear constraints and to recover the chemical potential of the dependent element
 #     from the chemical potentials of independent elements
 #     '''
 #     all_coefficients = raw_constraint_coefficients.get_dict()
 #     eqns = Dict_to_pandas_df(all_coefficients)
 #     master_eqn = eqns.loc[[compound.value],:]
-    
-#     return pandas_df_to_Dict(master_eqn, index=True) 
+
+#     return pandas_df_to_Dict(master_eqn, index=True)
 
 @calcfunction
 def get_master_equation(formation_energy_dict, compound, dependent_element, dopant):
     '''
     The 'master' equation is simply the equality corresponding to the formation energy of the
-    compound under consideration. For ex. if we are studying the defect in Li3PO4, the master 
+    compound under consideration. For ex. if we are studying the defect in Li3PO4, the master
     equation is simply: 3*mu_Li + mu_P + 4*mu_O = Ef where Ef is the formation energy per fu
     of Li3PO4. This equation is needed to replace the dependent chemical potential from the set
-    of other linear constraints and to recover the chemical potential of the dependent element 
+    of other linear constraints and to recover the chemical potential of the dependent element
     from the chemical potentials of independent elements
     '''
     Ef_dict = formation_energy_dict.get_dict()
@@ -130,7 +130,7 @@ def get_master_equation(formation_energy_dict, compound, dependent_element, dopa
         master_eqn.loc[compound, atom.symbol] = composition[atom]
     master_eqn.loc[compound, 'Ef'] = Ef_dict[compound]
 
-    return pandas_df_to_Dict(master_eqn, index=True) 
+    return pandas_df_to_Dict(master_eqn, index=True)
 
 
 @calcfunction
@@ -138,9 +138,9 @@ def get_reduced_matrix_of_constraints(full_matrix_of_constraints, compound, depe
     '''
     The reduced matrix of constraints is obtained from the full matrix of constraint by eliminating
     the row corresponding to the master equation and the column associated with the dependent element
-    after substituting the chemical potential of the dependent element by that of the independent 
-    elements using the master equation (which at this stage is the first row of the full matrix of 
-    constraints). Therefore, if the shape of the full matrix of constraint is NxM, then the shape 
+    after substituting the chemical potential of the dependent element by that of the independent
+    elements using the master equation (which at this stage is the first row of the full matrix of
+    constraints). Therefore, if the shape of the full matrix of constraint is NxM, then the shape
     of the reduced matrix of constraints is (N-1)x(M-1)
     '''
     compound = compound.value
@@ -165,7 +165,7 @@ def get_reduced_matrix_of_constraints(full_matrix_of_constraints, compound, depe
 def get_stability_vertices(master_eqn, matrix_eqns, compound, dependent_element, tolerance):
     '''
     Solving the (reduced) matrix of constraints to obtain the vertices of the stability region.
-    The last column (or coordinate) corresponds to the dependent element. 
+    The last column (or coordinate) corresponds to the dependent element.
     '''
     master_eqn = master_eqn.get_dict()
     matrix_eqns = matrix_eqns.get_dict()
@@ -205,7 +205,7 @@ def get_stability_vertices(master_eqn, matrix_eqns, compound, dependent_element,
     dependent_chempot = get_dependent_chempot(master_eqn, stability_corners.to_dict(orient='list'), compound, dependent_element)
     stability_corners = np.append(stability_corners, np.reshape(dependent_chempot, (-1,1)), axis =1)
     stability_vertices = Dict({'column': matrix_eqns['column'][:-1]+[dependent_element], 'data': stability_corners})
-    
+
     return stability_vertices
 
 def get_dependent_chempot(master_eqn, chempots, compound, dependent_element):
@@ -222,8 +222,8 @@ def get_dependent_chempot(master_eqn, chempots, compound, dependent_element):
 @calcfunction
 def get_centroid_of_stability_region(stability_corners, master_eqn, matrix_eqns, compound, dependent_element, grid_points, tolerance):
     '''
-    Use to determine centroid or in some cases the center of the stability region. The center is defined as the average 
-    coordinates of the vertices while a centroid is the average cooridinates of every point inside the polygone or polyhedron, 
+    Use to determine centroid or in some cases the center of the stability region. The center is defined as the average
+    coordinates of the vertices while a centroid is the average cooridinates of every point inside the polygone or polyhedron,
     i.e. its center of mass.
     For binary compounds, the stability region is a one-dimensional segment. The centroid coincides with the center.
     For ternary, quarternary and quinary compounds, the centroid is returned.
@@ -389,7 +389,7 @@ def get_absolute_chemical_potential(relative_chemical_potential, ref_energy):
     ref_energy = ref_energy.get_dict()
     relative_chemical_potential = relative_chemical_potential.get_dict()
     relative_chempot = Dict_to_pandas_df(relative_chemical_potential)
-    
+
     absolute_chemical_potential = {}
     for element in relative_chempot.columns:
         absolute_chemical_potential[element] = ref_energy[element] + np.array(relative_chempot[element])
@@ -398,7 +398,7 @@ def get_absolute_chemical_potential(relative_chemical_potential, ref_energy):
 
 @calcfunction
 def get_StabilityData(matrix_eqns, stability_vertices, compound, dependent_element):
-    
+
     # from aiida_defects.data.data import StabilityData
     from aiida.plugins import DataFactory
 

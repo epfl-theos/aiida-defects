@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -18,7 +18,7 @@ Utility functions for the Lany-Zunger potential alignment workchain
 @calcfunction
 def get_spherical_potential(site, structure):
     """
-    Computes the spherically averaged electrostatic potential for a 
+    Computes the spherically averaged electrostatic potential for a
     given site, in a given structure
 
     Parameters

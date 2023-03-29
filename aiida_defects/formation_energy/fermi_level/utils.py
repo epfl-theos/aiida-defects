@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -19,16 +19,16 @@ from scipy.special import expit
 
 def compute_net_charge(defect_data, chem_potentials, temperature, unitcell, band_gap, dos_x, dos_y, dopant):
     '''
-    This is a nested function that return a function (with E_Fermi as variable) to be use in the 
+    This is a nested function that return a function (with E_Fermi as variable) to be use in the
     non-linear solver to obtain the self-consistent Fermi level.
 
     arguments:
     defect_data : dictionary containing information required to compute the formation energy of each defect
     chem_potentials : dictionary containing the chemical potential of all elements constituting the compound. Each value can be a float or 1d numpy array
-    #input_chem_shape : the shape of values of 'chem_potentials' dictionnary. This is needed because we want the code to work both for float or numpy array 
-    #                for ex. when computing the concentration of a particular defect in the stability region. We can of course do that one 
+    #input_chem_shape : the shape of values of 'chem_potentials' dictionnary. This is needed because we want the code to work both for float or numpy array
+    #                for ex. when computing the concentration of a particular defect in the stability region. We can of course do that one
     #                value at a time but it is much slower than vectorization using numpy
-    dopant : aliovalent dopants specified by its charge and concentration with the format {'X_1': {'c':, 'q':}, 'X_2': {'c':, 'q':}, ...}. 
+    dopant : aliovalent dopants specified by its charge and concentration with the format {'X_1': {'c':, 'q':}, 'X_2': {'c':, 'q':}, ...}.
             Used to compute the change in the defect concentrations with 'frozen defect' approach
     uniticell : is the structure used to compute the Dos, NOT the host supercell used to compute the formation energy
     '''
@@ -40,7 +40,7 @@ def compute_net_charge(defect_data, chem_potentials, temperature, unitcell, band
     def defect_formation_energy(E_Fermi):
         '''
         Compute the defect formation energy of all defects given in the input file as a function of the fermi level
-        E_Fermi. 
+        E_Fermi.
         '''
         E_defect_formation = {}
         for defect in defect_data.keys():
@@ -86,7 +86,7 @@ def compute_net_charge(defect_data, chem_potentials, temperature, unitcell, band
 #        '''
 #        upper_dos = dos_y[dos_x>=band_gap]
 #        E_upper = dos_x[dos_x>=band_gap]
-#        
+#
 #        ndim = E_Fermi.ndim
 #        E_Fermi = np.expand_dims(E_Fermi, axis=ndim) # To broadcast with E_upper
 #        mask_n = ((E_upper-E_Fermi)/(k_B*temperature) < 700.0) # To avoid overflow in the exp
@@ -96,7 +96,7 @@ def compute_net_charge(defect_data, chem_potentials, temperature, unitcell, band
 #        temp = E_upper-E_Fermi
 #        temp[~mask_n] = 0
 #        temp_n = upper_dos/(np.exp(temp/(k_B*temperature))+1.0)
-#        
+#
 #        return convert*np.sum(temp_n, axis=ndim)*dE/unitcell.volume
 #
 #    def hole_concentration(E_Fermi):
@@ -105,7 +105,7 @@ def compute_net_charge(defect_data, chem_potentials, temperature, unitcell, band
 #        '''
 #        lower_dos = dos_y[dos_x<=0.0]
 #        E_lower = dos_x[dos_x<=0.0]
-#        
+#
 #        ndim = E_Fermi.ndim
 #        E_Fermi = np.expand_dims(E_Fermi, axis=ndim) # To broadcast with E_lower
 #        mask_p = ((E_Fermi-E_lower)/(k_B*temperature) < 700.0) # To avoid overflow in the exp
@@ -115,7 +115,7 @@ def compute_net_charge(defect_data, chem_potentials, temperature, unitcell, band
 #        temp = E_Fermi-E_lower
 #        temp[~mask_p] = 0
 #        temp_p = lower_dos/(np.exp(temp/(k_B*temperature))+1.0)
-#        
+#
 #        return convert*np.sum(temp_p, axis=ndim)*dE/unitcell.volume
 
     def c_defect(N_site, Ef):

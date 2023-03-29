@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -32,7 +32,7 @@ class FermiLevelWorkchain(WorkChain):
         spec.input("unitcell", valid_type=StructureData)
         spec.input("DOS", valid_type=XyData)
         spec.input("band_gap", valid_type=Float)
-        spec.input("dopant", valid_type=Dict, default=lambda: Dict(dict=None), 
+        spec.input("dopant", valid_type=Dict, default=lambda: Dict(dict=None),
                 help="aliovalent dopants specified by its charge and concentration. Used to compute the change in the defect concentrations with frozen defect approach")
         spec.input("tolerance_factor", valid_type=Float, default=lambda: Float(1e-10),
                 help="tolerance factor use in the non-linear solver to solve for the self-consistent fermi level")
@@ -67,7 +67,7 @@ class FermiLevelWorkchain(WorkChain):
         v_data = ArrayData()
         v_data.set_array('data', dos_x)
         self.ctx.dos_x = v_data
-        
+
         dos_y = self.inputs.DOS.get_y()[1][1]
         v_data = ArrayData()
         v_data.set_array('data', dos_y)
@@ -87,14 +87,14 @@ class FermiLevelWorkchain(WorkChain):
 
     def compute_sc_fermi_level(self):
         try:
-            E_Fermi = solve_for_sc_fermi(self.inputs.defect_data, 
-                                        self.inputs.chem_potentials, 
-                                        #self.ctx.input_chem_shape, 
-                                        self.inputs.temperature, 
-                                        self.inputs.unitcell, 
+            E_Fermi = solve_for_sc_fermi(self.inputs.defect_data,
+                                        self.inputs.chem_potentials,
+                                        #self.ctx.input_chem_shape,
+                                        self.inputs.temperature,
+                                        self.inputs.unitcell,
                                         self.inputs.band_gap,
-                                        self.ctx.dos_x, 
-                                        self.ctx.dos_y, 
+                                        self.ctx.dos_x,
+                                        self.ctx.dos_y,
                                         self.inputs.dopant,
                                         self.inputs.tolerance_factor)
 

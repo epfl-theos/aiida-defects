@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+########################################################################################
+# Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
+#                                                                                      #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
+# For further information on the license, see the LICENSE.txt file                     #
+########################################################################################
 from __future__ import absolute_import
 
 import numpy as np
@@ -45,8 +52,8 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
             help="Inputs for DFPT calculation for calculating the relative permittivity of the host material")
         spec.input_namespace('qe.pp',
             help="Inputs for postprocessing calculations")
-        
- #       spec.input('nbands', valid_type=orm.Int, 
+
+ #       spec.input('nbands', valid_type=orm.Int,
  #           help="The number of bands used in pw calculation for the unitcell. Need to specify it because we want it to be larger than the default value so that we can get the band gap which is need for the FermiLevelWorkchain.")
         spec.input('k_points_distance', valid_type=orm.Float, required=False, default=lambda: orm.Float(0.2),
             help='distance (in 1/Angstrom) between adjacent kpoints')
@@ -87,8 +94,8 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
 #        spec.input_namespace("qe.dft.unitcell.pseudopotentials",valid_type=orm.UpfData, dynamic=True,
 #            help="The pseudopotential family for use with the code, if required")
         spec.input("qe.dft.unitcell.pseudopotential_family", valid_type=orm.Str,
-            help="The pseudopotential family for use with the code")       
-        
+            help="The pseudopotential family for use with the code")
+
         # DOS inputs (DOS.x)
         spec.input("qe.dos.code", valid_type=orm.Code,
                 help="The dos.x code to use for the calculations")
@@ -139,12 +146,12 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
             cls.check_fermi_level_workchain,
             cls.compute_defect_formation_energy
             )
-    
+
     def retrieve_previous_results(self):
         """
         Retrieve all the converged calculations from the previous run
         """
-        
+
         self.report('Retrieving results from previous calculations...')
         Node = orm.load_node(self.inputs.restart_node.value)
 
@@ -156,7 +163,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
             self.ctx.electrostatic_correction = Node.outputs.electrostatic_correction.get_dict()
             self.ctx.potential_alignment = Node.outputs.potential_alignment.get_dict()
             # self.ctx.defect_data = Node.outputs.defect_data.get_dict()
-            
+
             self.ctx.sc_fermi_dopants = list(set(self.ctx.fermi_level.keys()).union(set(self.inputs.formation_energy_dict.get_dict().keys())))
 
             for defect, properties in self.ctx.all_defects.items():
@@ -170,7 +177,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
                     self.ctx.all_defects[defect]['charges'].append(0.0)
                 # for chg in self.ctx.all_defects[defect]['charges']:
                 #     self.ctx.defect_data[defect]['charges'][str(chg)] = {}
-            
+
             for entry in Node.get_outgoing():
                 try:
                     process_label = entry.node.attributes['process_label']
@@ -185,7 +192,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
                 #       self.report('{}'.format(calc_name))
                 #       pw_host_dopants.remove(calc_label[5:])
                 #       self.ctx[calc_name] = entry.node
-                
+
                 if process_label == 'FermiLevelWorkchain':
                     self.ctx.dos = entry.node.inputs.DOS
                     vbm = entry.node.inputs.valence_band_maximum.value
@@ -203,7 +210,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
 
             for defect, info in Node.inputs.defect_info.get_dict().items():
                 if defect not in self.ctx.all_defects.keys():
-                    self.ctx.all_defects[defect] = info 
+                    self.ctx.all_defects[defect] = info
                     if 0.0 not in self.ctx.all_defects[defect]['charges']:
                         self.ctx.all_defects[defect]['charges'].append(0.0)
             pw_defects = copy.deepcopy(self.ctx.all_defects)
@@ -242,7 +249,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
                             pw_defects[defect]['charges'].remove(chg)
                             if not pw_defects[defect]['charges']:
                                 pw_defects.pop(defect)
-                
+
                 elif process_label == 'PpCalculation':
                     calc_label = entry.node.label
                     if entry.node.is_finished_ok:
@@ -286,7 +293,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
 #                    if entry.node.is_finished_ok:
 #                        self.ctx["fermi_level_wc_{}".format(dopant)] = entry.node
 #                        sc_fermi_dopants.pop(dopant)
-                
+
                 else:
                     pass
 
@@ -296,8 +303,8 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
             self.ctx.pw_defects = pw_defects
             self.ctx.phi_defects = phi_defects
             self.ctx.rho_defects = rho_defects
-            self.ctx.gc_correction_defects = gc_correction_defects 
-            
+            self.ctx.gc_correction_defects = gc_correction_defects
+
         self.report('chempot dopant: {}'.format(self.ctx.chempot_dopants.keys()))
         self.report('pw host dopant: {}'.format(self.ctx.pw_host_dopants))
         self.report('sc fermi dopants: {}'.format(self.ctx.sc_fermi_dopants))
@@ -363,7 +370,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         """
         Check if the DFT calculation of the unitcell has completed successfully.
         """
-        
+
         # self.ctx['calc_unitcell'] = orm.load_node(230976)
 
         unitcell_calc = self.ctx['calc_unitcell']
@@ -384,7 +391,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
             self.report("The number of electron is: {}".format(self.ctx.number_of_electrons))
             self.report("The bottom of the valence band is: {} eV".format(self.ctx.vbm.value))
 
-    
+
     def prep_dos_calculation(self):
         '''
         Run a calculation to extract the DOS of the unitcell.
@@ -408,7 +415,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         '''
         Retrieving the DOS of the unitcell
         '''
-        
+
         # self.ctx['calc_dos'] = orm.load_node(230991)
 
         dos_calc = self.ctx['calc_dos']
@@ -433,7 +440,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         """
         Run a DFPT calculation to compute the dielectric constant for the pristine material
         """
-        
+
         ph_inputs = PhCalculation.get_builder()
         ph_inputs.code = self.inputs.qe.dfpt.code
 
@@ -517,7 +524,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         if 'settings' in self.inputs.qe.dft.supercell:
             overrides['base']['pw']['settings'] = self.inputs.qe.dft.supercell.settings.get_dict()
             overrides['base_final_scf']['pw']['settings'] = self.inputs.qe.dft.supercell.settings.get_dict()
-        
+
         for dopant in self.ctx.pw_host_dopants:
         #for dopant in self.ctx.pw_host_dopants[:1]:
             #overrides['base']['pw']['metadata']['label'] = 'host_{}'.format(dopant)
@@ -560,12 +567,12 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
 #
 ##        pw_inputs = PwCalculation.get_builder()
 ##        pw_inputs.code = self.inputs.qe.dft.supercell.code
-#        
+#
 #        kpoints = orm.KpointsData()
 #        kpoints.set_cell_from_structure(self.inputs.host_structure)
 #        kpoints.set_kpoints_mesh_from_density(self.inputs.k_points_distance.value)
 ##        pw_inputs.kpoints = kpoints
-#        
+#
 ##        pw_inputs.metadata = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
 ##        pw_inputs.settings = self.inputs.qe.dft.supercell.settings
 #        scheduler_options = self.inputs.qe.dft.supercell.scheduler_options.get_dict()
@@ -580,7 +587,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
 ##        pw_inputs.structure = self.inputs.host_structure
 #        parameters['SYSTEM']['tot_charge'] = orm.Float(0.)
 ##        pw_inputs.parameters = orm.Dict(dict=parameters)
-#        
+#
 #        inputs = {
 #            'pw':{
 #                'code' : self.inputs.qe.dft.supercell.code,
@@ -595,7 +602,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
 #            pseudos = get_pseudos_from_structure(self.inputs.host_structure, self.inputs.qe.dft.supercell.pseudopotential_family.value)
 #            scheduler_options['label'] = 'host_{}'.format(dopant)
 ##            pw_inputs.metadata = scheduler_options
-#            
+#
 #            inputs['pw']['pseudos'] = pseudos
 #            inputs['pw']['metadata'] = scheduler_options
 #
@@ -604,17 +611,17 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
 #                    .format(self.inputs.host_structure.pk, future.pk))
 #            future.label = 'host_{}'.format(dopant)
 #            self.to_context(**{'calc_host_{}'.format(dopant): future})
-#        
+#
 #        #defect_info = self.inputs.defect_info.get_dict()
 #        for defect, properties in self.ctx.pw_defects.items():
 #            defect_structure = generate_defect_structure(self.inputs.host_structure, properties['defect_position'], properties['species'])
 ##            temp_structure = pymatgen.Structure.from_file('/home/sokseiham/Documents/Defect_calculations/LiK2AlF6/Structures/Ba-K.cif')
 ##            defect_structure = orm.StructureData(pymatgen=temp_structure)
 #            pseudos = get_pseudos_from_structure(defect_structure, self.inputs.qe.dft.supercell.pseudopotential_family.value)
-#            
+#
 #            inputs['pw']['structure'] = defect_structure
 #            inputs['pw']['pseudos'] = pseudos
-#            
+#
 #            parameters['SYSTEM']['nspin'] = 2
 #            parameters['SYSTEM']['tot_magnetization'] = 0.0
 #
@@ -623,7 +630,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
 ##                pw_inputs.parameters = orm.Dict(dict=parameters)
 #                scheduler_options['label'] = '{}[{}]'.format(defect, chg)
 ##                pw_inputs.metadata = scheduler_options
-#                
+#
 #                inputs['pw']['metadata'] = scheduler_options
 #                inputs['pw']['parameters'] = orm.Dict(dict=parameters)
 #
@@ -638,7 +645,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         Check if the required calculations for the Gaussian Countercharge correction workchain
         have finished correctly.
         """
-        
+
         # self.ctx['calc_host_intrinsic'] = orm.load_node(231011)
         # self.ctx['calc_defect_N-O[-1.0]'] = orm.load_node(231028)
         # self.ctx['calc_defect_N-O[0.0]'] = orm.load_node(231044)
@@ -658,7 +665,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
                     'PWSCF for the host structure has failed with status {}'.format(host_calc.exit_status))
                 return self.exit_codes.ERROR_DFT_CALCULATION_FAILED
 
-        # Defects 
+        # Defects
         #defect_info = self.inputs.defect_info.get_dict()
         defect_info = self.ctx.all_defects
         for defect, properties in defect_info.items():
@@ -693,7 +700,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         # User inputs
         pp_inputs = PpCalculation.get_builder()
         pp_inputs.code = self.inputs.qe.pp.code
-        
+
         scheduler_options = self.inputs.qe.pp.scheduler_options.get_dict()
         scheduler_options['label'] = 'pp_phi_host'
         pp_inputs.metadata = scheduler_options
@@ -724,7 +731,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         self.report('Launching PP.x for electrostatic potential for the host structure at node PK={}'
                 .format(future.pk))
         self.to_context(**{'pp_phi_host': future})
-        
+
         #Defects
         for defect, properties in self.ctx.phi_defects.items():
             for chg in properties['charges']:
@@ -741,7 +748,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         Check if the required calculations for the Gaussian Countercharge correction workchain
         have finished correctly.
         """
-        
+
         # self.ctx['pp_phi_host'] = orm.load_node(231144)
         # self.ctx['pp_phi_defect_N-O[-1.0]'] = orm.load_node(231145)
         # self.ctx['pp_phi_defect_N-O[0.0]'] = orm.load_node(231146)
@@ -760,7 +767,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
             self.report(
                 'Post processing for electrostatic potential the host structure has failed with status {}'.format(host_pp.exit_status))
             return self.exit_codes.ERROR_PP_CALCULATION_FAILED
-        
+
         # Defects
         defect_info = self.ctx.all_defects
         for defect, properties in defect_info.items():
@@ -776,7 +783,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
                     self.report('Post processing for electrostatic potential for {} defect structure with charge {} has failed with status {}'
                             .format(defect, chg, defect_pp.exit_status))
                     return self.exit_codes.ERROR_PP_CALCULATION_FAILED
-    
+
     def prep_charge_density_calculations(self):
         """
         Obtain electronic charge density from the PWSCF calculations.
@@ -791,7 +798,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         # Fixed settings
         #pp_inputs.plot_number = orm.Int(0)  # Charge density
         #pp_inputs.plot_dimension = orm.Int(3)  # 3D
-        
+
         parameters = orm.Dict(dict={
             'INPUTPP': {
                 "plot_num" : 0,
@@ -822,7 +829,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
                 self.report('Launching PP.x for charge density for {} defect structure with charge {} at node PK={}'
                         .format(defect, chg, future.pk))
                 self.to_context(**{'pp_rho_defect_{}[{}]'.format(defect, chg): future})
-    
+
     def check_charge_density_calculations(self):
         """
         Check if the required calculations for the Gaussian Countercharge correction workchain

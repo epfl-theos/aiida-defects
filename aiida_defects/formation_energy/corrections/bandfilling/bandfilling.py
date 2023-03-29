@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -27,7 +27,7 @@ class BandFillingWorkChain(WorkChain):
     Workchain to compute band filling corrections
     bands_NiO=run(PwBandsWorkChain,code=Code.get_from_string(codename), structure = s, pseudo_family=Str(pseudo_family),
               options=ParameterData(dict=options), settings=ParameterData(dict=settings), kpoints_mesh=kpoints,
-              parameters=parameters, optimization=Bool(False), relax=relax)   
+              parameters=parameters, optimization=Bool(False), relax=relax)
     """
 
     @classmethod

@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -94,7 +94,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             help="Settings for the PW.x calculations")
         spec.input("qe.dft.unitcell.pseudopotential_family", valid_type=orm.Str,
             help="The pseudopotential family for use with the code")
-    
+
         # Postprocessing inputs (PP.x)
         spec.input("qe.pp.code",
             valid_type=orm.Code,
@@ -149,7 +149,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         """
 
         self.report("Setting up the Gaussian Countercharge correction workchain")
-        
+
         relax_type = {'fixed': RelaxType.NONE, 'relax': RelaxType.POSITIONS, 'vc-relax': RelaxType.POSITIONS_CELL}
 
         overrides = {
@@ -247,7 +247,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                 'Launching PWSCF for the defect structure (PK={}) with charge {} (PK={})'
                 .format(self.inputs.defect_structure.pk, self.inputs.defect_charge.value, future.pk))
             self.to_context(**{'calc_defect_q': future})
-                
+
     def check_dft_calcs_gaussian_correction(self):
         """
         Check if the required calculations for the Gaussian Countercharge correction workchain
@@ -282,7 +282,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             is_insulator, band_gap = orm.nodes.data.array.bands.find_bandgap(HostNode.outputs.output_band)
             if not is_insulator:
                 self.report('WARNING! The ground state of the host structure is metallic!')
-        
+
         # Defect (q=0)
         if self.inputs.run_pw_defect_q0:
             defect_q0_calc = self.ctx['calc_defect_q0']
@@ -332,7 +332,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         """
         Obtain the electrostatic potentials from the PWSCF calculations.
         """
-        
+
         # User inputs
         pp_inputs = PpCalculation.get_builder()
         pp_inputs.code = self.inputs.qe.pp.code
@@ -449,7 +449,7 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
                 'Post processing for the defect structure (with charge {}) has failed with status {}'
                 .format(self.inputs.defect_charge.value,defect_q_pp.exit_status))
             return self.exit_codes.ERROR_PP_CALCULATION_FAILED
-            
+
     def get_charge_density(self):
         """
         Obtain the electrostatic potentials from the PWSCF calculations.

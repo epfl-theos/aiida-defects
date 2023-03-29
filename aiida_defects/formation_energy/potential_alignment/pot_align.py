@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -51,12 +51,12 @@ def lz_potential_alignment(bulk_structure,
     :param defect_symbols: list of the symbol of each atom in the defect structure
     :param defect_structure: StructureData object fro the defect
     :param defect_grid: 3D-FFT grid for the defect obtained from the read_grif function
-    :param e_tol: energy tolerance to decide which atoms to exclude to compute alignment 
+    :param e_tol: energy tolerance to decide which atoms to exclude to compute alignment
                 (0.2 eV; as in S. Lany FORTRAN codes)
     :result pot_align: value of the potential alignment in eV
-    Note: Adapted from pylada defects (https://github.com/ConradJohnston/aiida-defectsada/pylada-defects)
-    Requirements: trilinear_interpolation, avg_potential_at_core. In order to use trilinear_interpolation the 
-    3D-FFT grid should be extracted from the FolderData node in which aiida.filplot is stored in the DB using 
+    Note: Adapted from pylada defects (https://github.com/epfl-theos/aiida-defectsada/pylada-defects)
+    Requirements: trilinear_interpolation, avg_potential_at_core. In order to use trilinear_interpolation the
+    3D-FFT grid should be extracted from the FolderData node in which aiida.filplot is stored in the DB using
     the read_grid function
     """
     # Computing the average electrostatic potential per atomic site type for the host
@@ -114,11 +114,11 @@ class PotentialAlignmentLanyZunger(WorkChain):
     """
     Computes the potential alignment for defect calculations.
     You can have three different choices:
-    1) perform a pw calculation followd by a pp calculation using the PpWorkChain for either bulk 
+    1) perform a pw calculation followd by a pp calculation using the PpWorkChain for either bulk
     and defective systems
     2) provide the folder of the pw calculation or the PWCalculation Node for either the bulk or the defective system
     3) for the bulk you can directly provide the fft_grid if it has been already computed
-    TODO: the input variable alignment_type was created so that other alignment types different from 
+    TODO: the input variable alignment_type was created so that other alignment types different from
           Lany-Zunger could be implemented modularly using the same workchain
     """
 

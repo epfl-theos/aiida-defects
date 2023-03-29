@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -72,8 +72,8 @@ def lz_potential_alignment(bulk_structure,
     of the bulk and defective structures. See: S. Lany and A. Zunger, PRB 78, 235104 (2008)
      S. Lany and A. Zunger, J. Appl. Phys. 100, 113725 􏰀2006􏰁.
     Note: Adapted from pylada defects (https://github.com/pylada/pylada-defects)
-    Requirements: trilinear_interpolation, avg_potential_at_core. In order to use trilinear_interpolation the 
-    3D-FFT grid should be extracted from the FolderData node in which aiida.filplot is stored in the DB using 
+    Requirements: trilinear_interpolation, avg_potential_at_core. In order to use trilinear_interpolation the
+    3D-FFT grid should be extracted from the FolderData node in which aiida.filplot is stored in the DB using
     the read_grid function.
 
     Parameters
@@ -84,17 +84,17 @@ def lz_potential_alignment(bulk_structure,
         Sphere averaged potential corresponding to each atom in the host structure
     bulk_symbols : List
         Symbols of each atom in the host structure
-    defect_sphere_pot : Dictionary 
+    defect_sphere_pot : Dictionary
         Sphere averaged potential corresponding to each atom in the defective structure
-    defect_symbols : List 
+    defect_symbols : List
         Symbols of each atom in the defect structure
-    defect_structure : StructureData 
+    defect_structure : StructureData
         Defective structure
     defect_grid : ArrayData
         3D-FFT grid for the defect obtained from the read_grid function
     e_tol: Float
         (0.2 eV; as in S. Lany FORTRAN codes)
-    
+
     Returns
     -------
     pot_align : Float

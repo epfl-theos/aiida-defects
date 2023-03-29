@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -41,7 +41,7 @@ def find_index_of_site(structure, site_coord):
     for i, site in enumerate(structure):
         if defect_site.distance(site) < 5E-4:
             return i
-        
+
 def get_vbm(calc_node):
     #N_electron = calc_node.res.number_of_electrons
     N_electron = calc_node.outputs.output_parameters.get_dict()['number_of_electrons']
@@ -90,7 +90,7 @@ def get_data_array(array):
 def get_defect_formation_energy(defect_data, E_Fermi, chem_potentials, pot_alignments):
     '''
     Computing the defect formation energy with and without electrostatic and potential alignment corrections
-    Note: 'E_corr' in the defect_data corresponds to the total correction, i.e electrostatic and potential alignment 
+    Note: 'E_corr' in the defect_data corresponds to the total correction, i.e electrostatic and potential alignment
     '''
     defect_data = defect_data.get_dict()
     E_Fermi = E_Fermi.get_array('data')
@@ -139,12 +139,12 @@ def get_defect_formation_energy(defect_data, E_Fermi, chem_potentials, pot_align
 #                     defect_temp[defect] = properties
 
 #         defect_Ef[dopant] = defect_formation_energy(
-#                 defect_temp, 
-#                 e_fermi, 
+#                 defect_temp,
+#                 e_fermi,
 #                 chem_potentials[dopant],
 #                 pot_alignments
 #                 )
-    
+
 #     return orm.Dict(dict=defect_Ef)
 
 def has_numbers(inputString):
@@ -173,7 +173,7 @@ def store_dict(**kwargs):
         if isinstance(v, orm.Dict):
             # new_dict[k.replace('q', '-')] = v.get_dict()
             d = {key.replace('_', '.'): item for key, item in v.get_dict().items()}
-            new_dict[new_k] = d 
+            new_dict[new_k] = d
         if isinstance(v, orm.Float):
             new_dict[new_k] = v.value
         if isinstance(v, orm.ArrayData):
@@ -183,11 +183,11 @@ def store_dict(**kwargs):
 
 @calcfunction
 def get_defect_data(dopant, compound, defect_info, vbm, E_host_outputs_params, total_correction, **kwargs):
-    
+
     dopant = dopant.value
     compound = compound.value
-    vbm = vbm.value 
-    E_host = E_host_outputs_params.get_dict()['energy'] 
+    vbm = vbm.value
+    E_host = E_host_outputs_params.get_dict()['energy']
     defect_info = defect_info.get_dict()
     total_correction = total_correction.get_dict()
 
@@ -200,7 +200,7 @@ def get_defect_data(dopant, compound, defect_info, vbm, E_host_outputs_params, t
                 defect_data[defect]['charges'][str(chg)] = {'E_corr': total_correction[defect][str(chg)],
                                                             'E': kwargs[convert_key(defect)+'_'+convert_key(str(chg))].get_dict()['energy']
                                                             }
-           
+
     return orm.Dict(dict=defect_data)
 
 
@@ -246,8 +246,8 @@ def get_raw_formation_energy(defect_energy, host_energy, chempot_sign, chemical_
     """
     chempot_sign = chempot_sign.get_dict()
     chemical_potential = chemical_potential.get_dict()
-    
-    e_f_uncorrected = defect_energy.value - host_energy.value + charge.value*(valence_band_maximum.value + fermi_energy.value) 
+
+    e_f_uncorrected = defect_energy.value - host_energy.value + charge.value*(valence_band_maximum.value + fermi_energy.value)
     for specie, sign in chempot_sign.items():
         e_f_uncorrected -= sign*chemical_potential[specie]
     return orm.Float(e_f_uncorrected)

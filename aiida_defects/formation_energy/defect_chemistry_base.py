@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -23,8 +23,8 @@ class DefectChemistryWorkchainBase(WorkChain):
     """
     The base class to determine the defect chemistry of a given material, containing the
     generic, code-agnostic methods, error codes, etc. Defect chemistry refer to the concentration or defect formation
-    energy of all possible defects (vacancies, interstitials, substitutions,...) which can exist in the material at 
-    thermodynamics equilibrium. 
+    energy of all possible defects (vacancies, interstitials, substitutions,...) which can exist in the material at
+    thermodynamics equilibrium.
 
     Any computational code can be used to calculate the required energies and relative permittivity.
     However, different codes must be setup in specific ways, and so separate classes are used to implement these
@@ -35,7 +35,7 @@ class DefectChemistryWorkchainBase(WorkChain):
     @classmethod
     def define(cls, spec):
         super(DefectChemistryWorkchainBase, cls).define(spec)
-        
+
         spec.input('restart_wc', valid_type=orm.Bool, required=False, default=lambda: orm.Bool(False),
             help="whether to restart the workchain from previous run or to start from scratch")
         spec.input('restart_node', valid_type=orm.Int, required=False,
@@ -71,7 +71,7 @@ class DefectChemistryWorkchainBase(WorkChain):
             help="Inputs for a fixed charge model using a user-specified multivariate gaussian")
         spec.input("charge_model.fixed.covariance_matrix",
             valid_type=orm.ArrayData,
-            help="The covariance matrix used to construct the gaussian charge distribution.")        
+            help="The covariance matrix used to construct the gaussian charge distribution.")
         # Fitted
         spec.input_namespace('charge_model.fitted', required=False, populate_defaults=False,
             help="Inputs for a fitted charge model using a multivariate anisotropic gaussian.")
@@ -136,27 +136,27 @@ class DefectChemistryWorkchainBase(WorkChain):
         """
         Setup the workchain
         """
-        
+
         self.ctx.inputs_chempots = self.exposed_inputs(ChemicalPotentialWorkchain)
-                
+
         # Check if correction scheme is valid:
         correction_schemes_available = ["gaussian", "point"]
         if self.inputs.correction_scheme is not None:
             if self.inputs.correction_scheme not in correction_schemes_available:
                 return self.exit_codes.ERROR_INVALID_CORRECTION
-        
+
         self.ctx.all_dopants = self.inputs.formation_energy_dict.get_dict()
         self.ctx.chempot_dopants = self.ctx.all_dopants
         self.ctx.sc_fermi_dopants = list(self.inputs.formation_energy_dict.get_dict().keys())
-        #self.ctx.pw_host_dopants = list(self.inputs.formation_energy_dict.get_dict().keys()) 
+        #self.ctx.pw_host_dopants = list(self.inputs.formation_energy_dict.get_dict().keys())
         self.ctx.pw_host_dopants = ['intrinsic']
-        
-        
+
+
         self.ctx['output_unitcell'] = {}
         #self.ctx['calc_dos'] = {}
         self.ctx.dos = {}
         self.ctx.all_defects = self.inputs.defect_info.get_dict()
-        
+
         self.ctx.defect_data = {}
         self.ctx.chemical_potential = {}
         self.ctx.fermi_level = {}
@@ -165,14 +165,14 @@ class DefectChemistryWorkchainBase(WorkChain):
         self.ctx.pw_defects = self.inputs.defect_info.get_dict()
         self.ctx.phi_defects = self.inputs.defect_info.get_dict()
         self.ctx.rho_defects = self.inputs.defect_info.get_dict()
-        self.ctx.gc_correction_defects = self.inputs.defect_info.get_dict() 
+        self.ctx.gc_correction_defects = self.inputs.defect_info.get_dict()
 
         self.ctx.total_correction = {}
         self.ctx.electrostatic_correction = {}
         self.ctx.potential_alignment = {}
 
         # defect_data contains all the information requires to compute defect formation energy such as E_corr, E_host, vbm,...
-        
+
         for defect, properties in self.ctx.all_defects.items():
             self.ctx.total_correction[defect] = {}
             self.ctx.electrostatic_correction[defect] = {}
@@ -188,10 +188,10 @@ class DefectChemistryWorkchainBase(WorkChain):
             #     self.ctx.defect_data[defect]['charges'][str(chg)] = {}
         #self.report('The defect data are: {}'.format(self.ctx.defect_data))
 
-    
+
     def if_restart_wc(self):
         return self.inputs.restart_wc.value
-    
+
     def if_rerun_calc_unitcell(self):
         if not self.ctx['output_unitcell']:
             return True
@@ -208,7 +208,7 @@ class DefectChemistryWorkchainBase(WorkChain):
         else:
             #sefl.out('density_of_states', store_dos(self.ctx.dos))
             return False
-            
+
     def if_run_dfpt(self):
         return self.inputs.epsilon == 0.0
 
@@ -241,7 +241,7 @@ class DefectChemistryWorkchainBase(WorkChain):
         Check if the chemical potential workchain have finished correctly.
         If yes, assign the output to context
         """
-        
+
         # self.ctx["chem_potential_wc_N"] = orm.load_node(230917)
         # self.ctx["chem_potential_wc_intrinsic"] = orm.load_node(230921)
 
@@ -268,14 +268,14 @@ class DefectChemistryWorkchainBase(WorkChain):
         )
 
         self.report("Computing correction via the Gaussian Countercharge scheme")
-        
+
         # parent_node = orm.load_node(224010)
         # self.ctx.phi_host = get_data_array(parent_node.inputs.v_host)
         # self.ctx.rho_host = get_data_array(parent_node.inputs.rho_host)
-        # self.ctx['phi_defect_N-O[0.0]'] = get_data_array(parent_node.inputs.v_defect_q0) 
+        # self.ctx['phi_defect_N-O[0.0]'] = get_data_array(parent_node.inputs.v_defect_q0)
         # self.ctx['phi_defect_N-O[-1.0]'] = get_data_array(parent_node.inputs.v_defect_q)
         # self.ctx['rho_defect_N-O[-1.0]'] = get_data_array(parent_node.inputs.rho_defect_q)
-        
+
         # parent_node = orm.load_node(224014)
         # self.ctx['phi_defect_V_Cl[0.0]'] = get_data_array(parent_node.inputs.v_defect_q0)
         # self.ctx['phi_defect_V_Cl[1.0]'] = get_data_array(parent_node.inputs.v_defect_q)
@@ -291,7 +291,7 @@ class DefectChemistryWorkchainBase(WorkChain):
                 'model_type': self.inputs.charge_model.model_type
                 }
         }
-        
+
         #defect_info = self.ctx.all_defects
         for defect, properties in self.ctx.gc_correction_defects.items():
             print(defect, properties)
@@ -319,7 +319,7 @@ class DefectChemistryWorkchainBase(WorkChain):
         Check if the potential alignment workchains have finished correctly.
         If yes, assign the outputs to the context
         """
-        
+
         # self.ctx["correction_wc_N-O[-1.0]"] = orm.load_node(231218)
         # self.ctx["correction_wc_V_Cl[1.0]"] = orm.load_node(231222)
 
@@ -371,12 +371,12 @@ class DefectChemistryWorkchainBase(WorkChain):
                 if is_intrinsic_defect(properties['species'], compound) or dopant in properties['species'].keys():
                     for chg in properties['charges']:
                         pw_calc_outputs[convert_key(defect)+'_'+convert_key(str(chg))] = self.ctx['calc_defect_{}[{}]'.format(defect, chg)].outputs.output_parameters
-            self.ctx.defect_data[dopant] = get_defect_data(orm.Str(dopant), 
-                                                            self.inputs.compound, 
-                                                            self.inputs.defect_info, 
-                                                            self.ctx.vbm, 
-                                                            self.ctx['calc_host_intrinsic'].outputs.output_parameters, 
-                                                            self.ctx.total_correction, 
+            self.ctx.defect_data[dopant] = get_defect_data(orm.Str(dopant),
+                                                            self.inputs.compound,
+                                                            self.inputs.defect_info,
+                                                            self.ctx.vbm,
+                                                            self.ctx['calc_host_intrinsic'].outputs.output_parameters,
+                                                            self.ctx.total_correction,
                                                             **pw_calc_outputs)
             self.report('Defect data {}: {}'.format(dopant, self.ctx.defect_data[dopant].get_dict()))
 
@@ -416,7 +416,7 @@ class DefectChemistryWorkchainBase(WorkChain):
         Check if the fermi level workchain have finished correctly.
         If yes, assign the output to context
         """
-        
+
         #for dopant, ef_dict in self.ctx.all_dopants.items():
         for dopant in self.ctx.sc_fermi_dopants:
             fermi_level_wc = self.ctx["fermi_level_wc_{}".format(dopant)]
@@ -427,7 +427,7 @@ class DefectChemistryWorkchainBase(WorkChain):
                 return self.exit_codes.ERROR_FERMI_LEVEL_WORKCHAIN_FAILED
             else:
                 self.ctx.fermi_level[dopant] = fermi_level_wc.outputs.fermi_level
-                # self.ctx.fermi_level[dopant] = fermi_level_wc.outputs.fermi_level.get_array('data').item() # get the value from 0-d numpy array     
+                # self.ctx.fermi_level[dopant] = fermi_level_wc.outputs.fermi_level.get_array('data').item() # get the value from 0-d numpy array
             # self.report('Fermi level: {}'.format(self.ctx.fermi_level[dopant].get_array('data')))
         self.out('fermi_level', store_dict(**self.ctx.fermi_level))
 

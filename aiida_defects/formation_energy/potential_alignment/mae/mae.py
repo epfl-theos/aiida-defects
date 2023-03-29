@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -73,8 +73,8 @@ class MaeAlignmentWorkchain(WorkChain):
         Compute the difference of the  two potentials
         """
 
-        ### Temporary solution to convert potential to the same unit, has to be redone properly. 
-        ### The potentials generate by pp.x are in Rydberg while the model potential is in Hartree  
+        ### Temporary solution to convert potential to the same unit, has to be redone properly.
+        ### The potentials generate by pp.x are in Rydberg while the model potential is in Hartree
         if len(self.inputs.second_potential.get_arraynames()) == 1:
             #v_model = orm.ArrayData()
             #v_model.set_array('data',self.inputs.second_potential.get_array(self.inputs.second_potential.get_arraynames()[0])*-2.0) # Hartree to Ry unit of potential - This is dirty - need to harmonise units

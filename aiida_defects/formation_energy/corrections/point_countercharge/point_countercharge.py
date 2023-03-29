@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -24,7 +24,7 @@ class PointCounterChargeWorkchain(WorkChain):
     Computes the electrostatic correction for charged defects according to the Makov-Payne
     scheme (Makov & Payne, Mod. Mat. Sci. Eng. 17 (2009) 084002):
     E_MP = [1+c_sh(1-1/epsilon_r)]*DeltaE_1 with DeltaE_1 =q**2 alpha_M/(2*epsilon_r*L)
-    The correction is computed by rescaling DeltaE_1, the first order correction, computed in the case 
+    The correction is computed by rescaling DeltaE_1, the first order correction, computed in the case
     of q=1 and epsilon_r=1, according to the dielectric constant of the host system (epsilon_r)
     and its geometrical properties (c_sh). Delta_1(q=1,epsilon_r=1) is obtained through the following
     procedure:

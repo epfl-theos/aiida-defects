@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -69,7 +69,7 @@ class FormationEnergyWorkchainBase(WorkChain):
              valid_type=orm.Float,
              default=lambda: orm.Float(0.0),
              help="Fermi level position with respect to the valence band maximum")
-        spec.input("chempot_sign", 
+        spec.input("chempot_sign",
             valid_type=orm.Dict,
             help="To determine the sign of the chemical potential. The convention is that removing an atom is negative")
 
@@ -83,9 +83,9 @@ class FormationEnergyWorkchainBase(WorkChain):
         spec.input('tolerance', valid_type=orm.Float, default=lambda: orm.Float(1E-4))
         spec.input(
              "chemical_potential",
-             valid_type=orm.Dict, required=False, 
+             valid_type=orm.Dict, required=False,
              help="The chemical potential of the given defect type. The convention is that removing an atom is positive")
-        
+
         # Input for correction workchain
         # Charge Model Settings
         spec.input_namespace('charge_model',
@@ -93,7 +93,7 @@ class FormationEnergyWorkchainBase(WorkChain):
         spec.input("charge_model.model_type",
             valid_type=orm.Str,
             help="Charge model type: 'fixed' or 'fitted'",
-            default=lambda: orm.Str('fixed'))        
+            default=lambda: orm.Str('fixed'))
         # Fixed
         spec.input_namespace('charge_model.fixed', required=False, populate_defaults=False,
             help="Inputs for a fixed charge model using a user-specified multivariate gaussian")
@@ -304,7 +304,7 @@ class FormationEnergyWorkchainBase(WorkChain):
             "formation_energy_dict": self.inputs.formation_energy_dict,
             "compound": self.inputs.compound,
             "dependent_element": self.inputs.dependent_element,
-            "dopant_elements": self.inputs.dopant_elements, 
+            "dopant_elements": self.inputs.dopant_elements,
             "ref_energy": self.inputs.ref_energy,
             "tolerance": self.inputs.tolerance,
         }
@@ -317,7 +317,7 @@ class FormationEnergyWorkchainBase(WorkChain):
         Check if the chemical potential workchain have finished correctly.
         If yes, assign the output to context
         """
-        
+
         if self.inputs.run_chem_pot_wc:
             chem_potential_wc = self.ctx["chemical_potential_workchain"]
             if not chem_potential_wc.is_finished_ok:
@@ -332,7 +332,7 @@ class FormationEnergyWorkchainBase(WorkChain):
                 self.ctx.chemical_potential = chem_potential_wc.outputs.chemical_potential
         else:
             self.ctx.chemical_potential = self.inputs.chemical_potential
-            
+
     def compute_formation_energy(self):
         """
         Compute the formation energy

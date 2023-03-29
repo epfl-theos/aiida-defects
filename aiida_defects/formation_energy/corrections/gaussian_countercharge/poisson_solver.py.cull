@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -125,7 +125,7 @@ def get_fft(grid):
 
 def get_inverse_fft(fft_grid):
     """
-    Get the inverse FFT of an FFT grid 
+    Get the inverse FFT of an FFT grid
     """
     return np.fft.ifftn(np.fft.ifftshift(fft_grid))
 
@@ -173,7 +173,7 @@ def get_reciprocal_cell(cell_matrix):
 
 
 def get_reciprocal_grid(cell_matrix, cutoff):
-    """ 
+    """
     Prepare a reciprocal space grid to achieve a given planewave energy cutoff
     cutoff (Ry)
 
@@ -207,7 +207,7 @@ def get_reciprocal_grid(cell_matrix, cutoff):
 
 def get_real_space_grid(array_data):
     """
-    For a given charge density array, parsed from a calculation, produce a real space grid 
+    For a given charge density array, parsed from a calculation, produce a real space grid
     with the desired mesh, interpolating if needed.
     """
     pass

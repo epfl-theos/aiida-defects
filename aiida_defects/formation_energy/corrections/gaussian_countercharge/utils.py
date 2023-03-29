@@ -2,7 +2,7 @@
 ########################################################################################
 # Copyright (c), The AiiDA-Defects authors. All rights reserved.                       #
 #                                                                                      #
-# AiiDA-Defects is hosted on GitHub at https://github.com/ConradJohnston/aiida-defects #
+# AiiDA-Defects is hosted on GitHub at https://github.com/epfl-theos/aiida-defects     #
 # For further information on the license, see the LICENSE.txt file                     #
 ########################################################################################
 from __future__ import absolute_import
@@ -258,10 +258,10 @@ def get_charge_model_fit(rho_host, rho_defect_q, host_structure):
 
     # Do the fitting
     fit, covar_fit = curve_fit(
-        generate_charge_model(cell_matrix, peak_charge), 
-        xyz_coords, 
-        rho_diff.ravel(), 
-        p0=guesses, 
+        generate_charge_model(cell_matrix, peak_charge),
+        xyz_coords,
+        rho_diff.ravel(),
+        p0=guesses,
         bounds=bounds)
 
     # Compute the one standard deviation errors from the 9x9 covariance array
