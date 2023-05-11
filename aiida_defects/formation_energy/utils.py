@@ -8,7 +8,10 @@
 from __future__ import absolute_import
 
 from aiida import orm
+from aiida.orm import StructureData, Str
+from aiida_pseudo.groups.family import PseudoPotentialFamily
 from aiida.engine import calcfunction
+from typing import Union
 import numpy as np
 import pymatgen
 from pymatgen.core.composition import Composition
@@ -46,7 +49,11 @@ def get_vbm(calc_node):
     #N_electron = calc_node.res.number_of_electrons
     N_electron = calc_node.outputs.output_parameters.get_dict()['number_of_electrons']
     vb_index = int(N_electron/2)-1
-    vbm = np.amax(calc_node.outputs.output_band.get_array('bands')[:,vb_index])
+    bands = calc_node.outputs.output_band.get_array('bands')
+    if len(bands.shape) == 3:
+        # Case nspin = 2
+        bands = bands.reshape((bands.shape[0]*bands.shape[1], bands.shape[2]))
+    vbm = np.amax(bands[:, vb_index])
 
     return vbm
 
@@ -78,6 +85,16 @@ def get_defect_and_charge_from_label(calc_label):
     defect = spl[0]
     chg = float(spl[1].split(']')[0])
     return defect, chg
+
+def get_number_of_electrons(structure: StructureData, pseudo_family: Union[PseudoPotentialFamily, Str]):
+    if isinstance(pseudo_family, Str):
+        pseudo_family = orm.load_group(pseudo_family.value)
+    species = [s['name'] for s in structure.get_attribute('kinds')]
+    nat_per_species = [[site['kind_name'] for site in structure.get_attribute('sites')].count(s) 
+                       for s in species]
+    z_valence = [pseudo_family.get_pseudo(s).z_valence for s in species]
+    nelec = int(np.dot(z_valence, nat_per_species))
+    return nelec
 
 @calcfunction
 def get_data_array(array):

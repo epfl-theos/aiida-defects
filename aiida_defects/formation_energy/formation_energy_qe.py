@@ -18,7 +18,7 @@ from aiida_quantumespresso.workflows.protocols.utils import recursive_merge
 from aiida_quantumespresso.common.types import RelaxType
 
 from aiida_defects.formation_energy.formation_energy_base import FormationEnergyWorkchainBase
-from aiida_defects.formation_energy.utils import run_pw_calculation
+from aiida_defects.formation_energy.utils import run_pw_calculation, get_number_of_electrons
 from .utils import get_vbm, get_raw_formation_energy, get_data_array, get_corrected_formation_energy, get_corrected_aligned_formation_energy
 
 PpCalculation = CalculationFactory('quantumespresso.pp')
@@ -74,6 +74,10 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
             help="The pw.x code to use for the calculations")
         spec.input("qe.dft.supercell.parameters", valid_type=orm.Dict, required=False,
             help="Parameters for the PWSCF calcuations. Some will be set automatically")
+        spec.input("qe.dft.supercell.parameters_defect_q0", valid_type=orm.Dict, required=False,
+            help="Dictionary to tweak the parameters for the PWSCF calcuations on the neutral defect supercell")
+        spec.input("qe.dft.supercell.parameters_defect_q", valid_type=orm.Dict, required=False,
+            help="Dictionary to tweak the parameters for the PWSCF calcuations on the charge defect supercell")
         spec.input("qe.dft.supercell.scheduler_options", valid_type=orm.Dict,
             help="Scheduler options for the PW.x calculations")
         spec.input("qe.dft.supercell.settings", valid_type=orm.Dict,
@@ -191,6 +195,15 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
 
         # Host structure
         if self.inputs.run_pw_host:
+            try:
+                occupations = self.inputs.qe.dft.supercell.parameters.get_attribute('SYSTEM')['occupations']
+            except (AttributeError, KeyError):
+                occupations = None
+            if occupations == 'fixed':
+                nbnd = int(np.ceil(get_number_of_electrons(self.inputs.host_structure, self.inputs.qe.dft.supercell.pseudopotential_family) / 2 + 1))
+                overrides['base']['pw']['parameters'] = recursive_merge(overrides['base']['pw']['parameters'], {'SYSTEM':{'nbnd': nbnd}})
+                overrides['base_final_scf']['pw']['parameters'] = recursive_merge(overrides['base_final_scf']['pw']['parameters'], {'SYSTEM':{'nbnd': nbnd}})
+
             inputs = PwRelaxWorkChain.get_builder_from_protocol(
                     code = self.inputs.qe.dft.supercell.code,
                     structure = self.inputs.host_structure,
@@ -220,6 +233,20 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
 
         # Defect structure; neutral charge state
         if self.inputs.run_pw_defect_q0:
+            if 'parameters_defect_q0' in self.inputs.qe.dft.supercell:
+                parameters = self.inputs.qe.dft.supercell.parameters_defect_q0.get_dict()
+                overrides['base']['pw']['parameters'] = recursive_merge(overrides['base']['pw']['parameters'], parameters)
+                overrides['base_final_scf']['pw']['parameters'] = recursive_merge(overrides['base_final_scf']['pw']['parameters'], parameters)
+
+            try:
+                occupations = overrides['base']['pw']['parameters']['SYSTEM']['occupations']
+            except (AttributeError, KeyError):
+                occupations = None
+            if occupations == 'fixed':
+                nbnd = int(np.ceil(get_number_of_electrons(self.inputs.defect_structure, self.inputs.qe.dft.supercell.pseudopotential_family) / 2 + 1))
+                overrides['base']['pw']['parameters'] = recursive_merge(overrides['base']['pw']['parameters'], {'SYSTEM':{'nbnd': nbnd}})
+                overrides['base_final_scf']['pw']['parameters'] = recursive_merge(overrides['base_final_scf']['pw']['parameters'], {'SYSTEM':{'nbnd': nbnd}})
+
             inputs = PwRelaxWorkChain.get_builder_from_protocol(
                     code = self.inputs.qe.dft.supercell.code,
                     structure = self.inputs.defect_structure,
@@ -251,6 +278,20 @@ class FormationEnergyWorkchainQE(FormationEnergyWorkchainBase):
         if self.inputs.run_pw_defect_q:
             overrides['base']['pw']['parameters'] = recursive_merge(overrides['base']['pw']['parameters'], {'SYSTEM':{'tot_charge': self.inputs.defect_charge.value}})
             overrides['base_final_scf']['pw']['parameters'] = recursive_merge(overrides['base_final_scf']['pw']['parameters'], {'SYSTEM':{'tot_charge': self.inputs.defect_charge.value}})
+
+            if 'parameters_defect_q' in self.inputs.qe.dft.supercell:
+                parameters = self.inputs.qe.dft.supercell.parameters_defect_q.get_dict()
+                overrides['base']['pw']['parameters'] = recursive_merge(overrides['base']['pw']['parameters'], parameters)
+                overrides['base_final_scf']['pw']['parameters'] = recursive_merge(overrides['base_final_scf']['pw']['parameters'], parameters)
+
+            try:
+                occupations = overrides['base']['pw']['parameters']['SYSTEM']['occupations']
+            except (AttributeError, KeyError):
+                occupations = None
+            if occupations == 'fixed':
+                nbnd = int(np.ceil(get_number_of_electrons(self.inputs.defect_structure, self.inputs.qe.dft.supercell.pseudopotential_family) / 2 + 1))
+                overrides['base']['pw']['parameters'] = recursive_merge(overrides['base']['pw']['parameters'], {'SYSTEM':{'nbnd': nbnd}})
+                overrides['base_final_scf']['pw']['parameters'] = recursive_merge(overrides['base_final_scf']['pw']['parameters'], {'SYSTEM':{'nbnd': nbnd}})
 
             inputs = PwRelaxWorkChain.get_builder_from_protocol(
                     code = self.inputs.qe.dft.supercell.code,
