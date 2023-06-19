@@ -180,10 +180,10 @@ class DefectChemistryWorkchainBase(WorkChain):
             # self.ctx.defect_data[defect] = {'N_site': properties['N_site'], 'species': properties['species'], 'charges': {}}
             # Add neutral defect to the calculation even if the user doesn't specify it because it is needed to generate the charge model
             if 0.0 not in properties['charges']:
-                self.ctx.all_defects[defect]['charges'].append(0.0)
-                self.ctx.pw_defects[defect]['charges'].append(0.0)
-                self.ctx.phi_defects[defect]['charges'].append(0.0)
-                self.ctx.rho_defects[defect]['charges'].append(0.0)
+                self.ctx.all_defects[defect]['charges'].append(0)
+                self.ctx.pw_defects[defect]['charges'].append(0)
+                self.ctx.phi_defects[defect]['charges'].append(0)
+                self.ctx.rho_defects[defect]['charges'].append(0)
             # for chg in self.ctx.all_defects[defect]['charges']:
             #     self.ctx.defect_data[defect]['charges'][str(chg)] = {}
         #self.report('The defect data are: {}'.format(self.ctx.defect_data))
@@ -296,9 +296,9 @@ class DefectChemistryWorkchainBase(WorkChain):
         for defect, properties in self.ctx.gc_correction_defects.items():
             print(defect, properties)
             inputs['defect_site'] = orm.List(list=properties['defect_position'])
-            inputs["v_defect_q0"] = self.ctx['phi_defect_{}[{}]'.format(defect, 0.0)]
+            inputs["v_defect_q0"] = self.ctx['phi_defect_{}[{}]'.format(defect, 0)]
             for chg in properties['charges']:
-                if chg != 0.0:
+                if chg != 0:
                     inputs["defect_charge"] = orm.Float(chg)
                     inputs["v_defect_q"] = self.ctx['phi_defect_{}[{}]'.format(defect, chg)]
                     inputs["rho_defect_q"] = self.ctx['rho_defect_{}[{}]'.format(defect, chg)]
@@ -345,9 +345,9 @@ class DefectChemistryWorkchainBase(WorkChain):
                         temp_alignment[convert_key(str(chg))] = correction_wc.outputs.potential_alignment
                         # self.ctx.defect_data[defect]['charges'][str(chg)]['E_corr'] = correction_wc.outputs.total_correction.value
                 else:
-                    temp_total[convert_key('0.0')] = orm.Float(0.0)
-                    temp_electrostatic[convert_key('0.0')] = orm.Float(0.0)
-                    temp_alignment[convert_key('0.0')] = orm.Float(0.0)
+                    temp_total[convert_key('0.0')] = orm.Float(0)
+                    temp_electrostatic[convert_key('0.0')] = orm.Float(0)
+                    temp_alignment[convert_key('0.0')] = orm.Float(0)
                     # self.ctx.defect_data[defect]['charges']['0.0']['E_corr'] = 0.0
             total_correction[convert_key(defect)] = store_dict(**temp_total)
             electrostatic_correction[convert_key(defect)] = store_dict(**temp_electrostatic)

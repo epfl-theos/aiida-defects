@@ -173,8 +173,8 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
                 self.ctx.electrostatic_correction[defect] = {}
                 self.ctx.potential_alignment[defect] = {}
                 # self.ctx.defect_data[defect] = {'N_site': properties['N_site'], 'species': properties['species'], 'charges': {}}
-                if 0.0 not in properties['charges']:
-                    self.ctx.all_defects[defect]['charges'].append(0.0)
+                if 0 not in properties['charges']:
+                    self.ctx.all_defects[defect]['charges'].append(int(0))
                 # for chg in self.ctx.all_defects[defect]['charges']:
                 #     self.ctx.defect_data[defect]['charges'][str(chg)] = {}
 
@@ -212,7 +212,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
                 if defect not in self.ctx.all_defects.keys():
                     self.ctx.all_defects[defect] = info
                     if 0.0 not in self.ctx.all_defects[defect]['charges']:
-                        self.ctx.all_defects[defect]['charges'].append(0.0)
+                        self.ctx.all_defects[defect]['charges'].append(0)
             pw_defects = copy.deepcopy(self.ctx.all_defects)
             phi_defects = copy.deepcopy(self.ctx.all_defects)
             rho_defects = copy.deepcopy(self.ctx.all_defects)
@@ -279,7 +279,7 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
                         defect, chg = get_defect_and_charge_from_label(calc_label.replace('correction_wc_', ''))
                         gc_correction_defects[defect]['charges'].remove(chg)
                         #if not gc_correction_defects[defect]['charges']:
-                        if gc_correction_defects[defect]['charges'] == [0.0]:
+                        if gc_correction_defects[defect]['charges'] == [0]:
                             gc_correction_defects.pop(defect)
 
                 elif process_label == 'ChemicalPotentialWorkchain':
@@ -655,16 +655,17 @@ class DefectChemistryWorkchainQE(DefectChemistryWorkchainBase):
         # Host
         for dopant in self.ctx.pw_host_dopants[:1]:
             host_calc = self.ctx['calc_host_{}'.format(dopant)]
-#            if host_calc.is_finished_ok:
-#                self.ctx.host_energy = orm.Float(host_calc.outputs.output_parameters.get_dict()['energy']) # eV
-#                self.report('The energy of the host is: {} eV'.format(self.ctx.host_energy.value))
-#                self.ctx.host_vbm = orm.Float(get_vbm(host_calc))
-#                self.report('The top of valence band is: {} eV'.format(self.ctx.host_vbm.value))
-            if not host_calc.is_finished_ok:
+            if host_calc.is_finished_ok:
+                self.ctx.host_energy = orm.Float(host_calc.outputs.output_parameters.get_dict()['energy']) # eV
+                self.report('The energy of the host is: {} eV'.format(self.ctx.host_energy.value))
+                self.ctx.host_vbm = orm.Float(get_vbm(host_calc))
+                self.report('The top of valence band is: {} eV'.format(self.ctx.host_vbm.value))
+            else:
                 self.report(
                     'PWSCF for the host structure has failed with status {}'.format(host_calc.exit_status))
                 return self.exit_codes.ERROR_DFT_CALCULATION_FAILED
 
+        self.report(self.ctx.keys())
         # Defects
         #defect_info = self.inputs.defect_info.get_dict()
         defect_info = self.ctx.all_defects
